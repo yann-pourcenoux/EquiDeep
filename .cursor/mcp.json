@@ -1,12 +1,25 @@
 {
   "mcpServers": {
-    "sequential-thinking": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
-    },
     "git": {
       "command": "uvx",
-      "args": ["mcp-server-git"]
+      "args": [
+        "mcp-server-git"
+      ]
+    },
+    "smolagents-docs": {
+      "url": "https://gitmcp.io/huggingface/smolagents"
+    },
+    "task-master-ai": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "--package=task-master-ai",
+        "task-master-ai"
+      ],
+      "env": {
+        "OPENAI_API_KEY": "",
+        "OPENROUTER_API_KEY": ""
+      }
     }
   }
 }

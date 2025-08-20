@@ -1,0 +1,141 @@
+# Avanza Stock Analysis Tool PRD
+
+## Overview
+A minimal stock analysis tool designed for learning the HuggingFace smolagents library while building practical financial data capabilities. The tool scrapes Swedish stock data from Avanza, stores it in a local database, and leverages smolagents for AI-powered stock research. This project prioritizes educational value and smolagents integration over comprehensive financial analysis features.
+
+## Core Features
+
+### Stock Data Scraping
+- Parse stock listings from Avanza's stock discovery page (https://www.avanza.se/aktier/hitta.html?s=numberOfOwners.desc&o=20000)
+- Extract individual stock page links and scrape detailed financial data
+- Collect essential metrics: name, ticker symbol, key financial ratios, and available numerical data
+- Handle Swedish text and financial formatting appropriately
+
+### Data Storage & Management
+- SQLite database for storing all scraped stock information
+- Relational schema supporting stocks, financial metrics, and research results
+- Simple data persistence without complex ORM dependencies
+- Basic data validation and duplicate handling
+
+### AI-Powered Research Integration
+- Integration with HuggingFace smolagents library for stock research
+- Focus on latest news research for selected stocks
+- Store research results linked to specific stocks in the database
+- Demonstrate core smolagents capabilities and patterns
+
+## User Experience
+
+### Target User
+- Developers learning smolagents library
+- Financial data enthusiasts interested in Swedish market
+- Anyone wanting to explore AI-powered financial research tools
+
+### Core User Flow
+1. Run data collection to scrape latest Avanza stock data
+2. Browse collected stocks in local database
+3. Select stocks for AI research using smolagents
+4. View research results and financial data together
+
+### Interface Considerations
+- Command-line interface for simplicity
+- Minimal dependencies and setup requirements
+- Clear feedback during scraping and research operations
+
+## Technical Architecture
+
+### System Components
+- **Web Scraper**: Python-based scraper for Avanza pages using requests/BeautifulSoup
+- **Database Layer**: SQLite with basic Python SQL operations
+- **Research Engine**: HuggingFace smolagents integration for AI research
+- **CLI Interface**: Simple command-line tool for all operations
+
+### Data Models
+```sql
+stocks (id, name, ticker, url, last_scraped)
+financial_metrics (stock_id, metric_name, metric_value, metric_type)
+research_results (stock_id, research_type, content, created_at)
+```
+
+### Key Dependencies
+- requests + BeautifulSoup4 for web scraping
+- sqlite3 (built-in) for database
+- huggingface/smolagents for AI research
+- minimal CLI framework (argparse or click)
+
+### Infrastructure Requirements
+- Local Python environment
+- Internet access for scraping and API calls
+- HuggingFace API access for smolagents
+
+## Development Roadmap
+
+### Phase 1: Core Data Collection (MVP)
+- Implement Avanza page scraper for stock discovery
+- Create SQLite database schema
+- Build individual stock page parser
+- Store basic stock info and financial metrics
+- Command-line interface for data collection
+
+### Phase 2: Smolagents Integration
+- Set up HuggingFace smolagents library
+- Implement basic news research functionality
+- Connect research results to database
+- Create CLI commands for research operations
+
+### Phase 3: Data Access & Viewing
+- Simple data querying capabilities
+- Display stock information with research results
+- Basic filtering and search functionality
+
+## Logical Dependency Chain
+
+### Foundation First
+1. **Database Setup** - Establish SQLite schema and basic operations
+2. **Web Scraping Core** - Build Avanza scraper for stock discovery
+3. **Individual Stock Parser** - Extract detailed financial data from stock pages
+
+### Research Integration
+4. **Smolagents Setup** - Configure and test smolagents library
+5. **News Research** - Implement research functionality for stocks
+6. **Research Storage** - Connect research results to database
+
+### User Interface
+7. **CLI Framework** - Build command structure for all operations
+8. **Data Viewing** - Simple tools to browse collected data
+9. **Integration Testing** - End-to-end workflow validation
+
+## Risks and Mitigations
+
+### Technical Challenges
+- **Avanza Anti-Scraping**: Implement respectful scraping with delays and user-agent rotation
+- **Swedish Text Handling**: Ensure proper UTF-8 encoding and character handling
+- **Smolagents Learning Curve**: Start with simple examples and gradually build complexity
+
+### MVP Scope Management
+- **Feature Creep**: Stick to basic news research only for first version
+- **Over-Engineering**: Use simple Python patterns, avoid complex frameworks
+- **Data Quality**: Focus on collecting clean, basic data rather than comprehensive metrics
+
+### Resource Constraints
+- **API Limits**: Implement basic rate limiting for HuggingFace calls
+- **Storage Growth**: Keep data collection minimal for learning phase
+- **Time Investment**: Prioritize working software over perfect code
+
+## Appendix
+
+### Research Findings
+- Avanza provides publicly accessible stock pages with financial metrics
+- HuggingFace smolagents supports web search and news research capabilities
+- SQLite sufficient for prototype data storage needs
+
+### Technical Specifications
+- Python 3.8+ for modern language features
+- UTF-8 encoding for Swedish text support
+- REST API patterns for future extensibility
+- Modular code structure for learning and experimentation
+
+### Success Metrics
+- Successfully scrape and store 50+ stocks from Avanza
+- Complete smolagents integration with news research for any stock
+- Working CLI interface demonstrating all core functionality
+- Clean, readable code suitable for learning reference

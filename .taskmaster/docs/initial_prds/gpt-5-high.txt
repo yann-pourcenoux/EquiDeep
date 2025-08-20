@@ -1,0 +1,144 @@
+<context>
+# Overview  
+MVP CLI tool to:
+- Parse all stock links from `https://www.avanza.se/aktier/hitta.html?s=numberOfOwners.desc&o=20000`.
+- For each stock page, extract name, ticker, and available ratios/financial numbers.
+- Store results in a relational SQLite database.
+- For each stock, perform a brief latest-news research pass using the Hugging Face `smolagents` library and store headlines/links.
+
+Audience: individual developer learning `huggingface/smolagents` while building a useful, minimal stock data collector. Value: simple reproducible pipeline with persistent data and pluggable research agent.
+
+# Core Features  
+- Link harvesting: fetch the Avanza "Hitta Aktier" page and collect all stock detail links present on the loaded page.
+- Stock page parsing: for each link, scrape name, ticker, and a key-value set of ratios/financial metrics that are present on the page.
+- Translation: automatically translate Swedish content (stock names, metric labels, news headlines) to English before storage.
+- Persistent storage: write stocks, metrics, and news items to SQLite with a minimal normalized schema.
+- News research agent: use `smolagents` with a simple search tool to fetch latest news headlines/URLs per stock and store top results.
+
+# User Experience  
+- Single CLI entrypoint: `uv run main.py run` to execute end-to-end (harvest → scrape → persist → research).
+- Output: progress logs to stdout; SQLite file written to `./data/stocks.sqlite`.
+- Optional flags: dry-run (no DB writes), limit N stocks, skip-research.
+</context>
+<PRD>
+# Technical Architecture  
+System components:
+- LinkHarvester: HTTP GET the seed URL and parse stock detail links.
+- StockScraper: for each detail link, GET page and extract fields.
+- Translator: translate Swedish text (stock names, metric labels, news headlines) to English using LLM calls for context-aware financial translation.
+- DataStore: manage SQLite schema and inserts/updates.
+- ResearchAgent: `smolagents` agent that runs a simple news search tool (e.g., `duckduckgo_search`) and returns the top K recent items.
+- Orchestrator CLI: coordinates the above steps with simple flags.
+
+Data models (SQLite):
+- Table `stocks`:
+  - id INTEGER PRIMARY KEY
+  - ticker TEXT NOT NULL UNIQUE
+  - name TEXT NOT NULL
+  - avanza_url TEXT NOT NULL
+  - created_at TEXT DEFAULT CURRENT_TIMESTAMP
+- Table `stock_metrics`:
+  - id INTEGER PRIMARY KEY
+  - stock_id INTEGER NOT NULL REFERENCES stocks(id)
+  - metric_key TEXT NOT NULL
+  - metric_value TEXT NOT NULL
+  - as_of_date TEXT DEFAULT CURRENT_TIMESTAMP
+  - UNIQUE(stock_id, metric_key, as_of_date)
+- Table `stock_news`:
+  - id INTEGER PRIMARY KEY
+  - stock_id INTEGER NOT NULL REFERENCES stocks(id)
+  - headline TEXT NOT NULL
+  - url TEXT NOT NULL
+  - source TEXT
+  - published_at TEXT
+  - created_at TEXT DEFAULT CURRENT_TIMESTAMP
+
+APIs and integrations:
+- Avanza: public website pages (HTML) for list/detail views (read-only scraping).
+- smolagents: core agent framework for research; implement a custom `Tool` that uses `duckduckgo_search` (no API key) to fetch recent news per ticker/name.
+- Translation: use LLM API calls (OpenAI, Anthropic, etc.) to translate Swedish financial text to English with proper context understanding.
+- HTTP: `requests` for GET; HTML parsing via `beautifulsoup4` (with `lxml`).
+
+Infrastructure requirements:
+- Python 3.11+
+- Package management with `uv`
+- Local filesystem write access for `./data/stocks.sqlite` and cache/log files
+
+# Development Roadmap  
+MVP requirements (v0):
+1) Project scaffolding
+   - Create repo structure: `src/`, `data/`, `scripts/`, `tests/` (minimal), and `main.py` CLI.
+   - `uv add` initial dependencies: `requests`, `beautifulsoup4`, `smolagents`. Additional dependencies will be added as needed during implementation (e.g., `lxml`, `duckduckgo_search`, `tenacity`, `tqdm`, `openai`).
+2) LinkHarvester
+   - Fetch seed URL and parse all stock detail links on that page only.
+   - Make base URL join robust and deduplicate links.
+3) StockScraper
+   - For each detail link, extract: `name`, `ticker`, and all visible key ratios into a key-value map (metric_key, metric_value).
+   - Implement resilient selectors (prefer text labels next to values; fallbacks if structure changes slightly).
+4) Translator
+   - Implement LLM-based translation to convert Swedish financial text to English for stock names, metric labels, and news headlines.
+   - Use structured prompts for context-aware translation of financial terminology and add caching to avoid repeated translations.
+5) DataStore (SQLite)
+   - Create tables `stocks`, `stock_metrics`, `stock_news`.
+   - Upsert stock by ticker; insert metrics snapshot rows.
+6) ResearchAgent (smolagents)
+   - Define a `Tool` that queries latest news using `duckduckgo_search` with query like "<ticker> <name> news" and returns top 3 items.
+   - Implement a minimal `CodeAgent` (or equivalent) to call the tool and persist results into `stock_news`.
+7) Orchestrator CLI
+   - Command `run` executes: harvest → scrape → translate → persist → research, with flags: `--limit`, `--skip-research`, `--dry-run`.
+   - Print a brief summary (e.g., number of stocks processed, metrics rows inserted, news items captured).
+
+Future enhancements (later iterations, out of scope for v0):
+- Pagination over additional Avanza offsets and filtering options.
+- Concurrency/rate limiting, retries with backoff, and caching of responses.
+- Incremental updates (compare latest metrics, only insert deltas).
+- More robust parsing using structured selectors or heuristics per section.
+- Richer research agent with multiple tools (official news APIs, summarization, classification).
+- Basic tests and CI; Docker packaging.
+
+# Logical Dependency Chain
+1) Define DB schema and DataStore utilities.
+2) Implement LinkHarvester (get links) → verify with a few examples printed to stdout.
+3) Implement StockScraper (parse core fields) → verify objects in memory, then persist to DB.
+4) Wire Orchestrator CLI to run 1–3 end-to-end.
+5) Add ResearchAgent and store top 3 news per stock.
+
+# Risks and Mitigations  
+- Avanza DOM changes or dynamic content: use label-based selectors and keep fallback selectors; if content is JS-rendered, consider Playwright in future.
+- Rate limiting/robot rules: add small randomized delays and a standard browser-like User-Agent; respect robots and terms.
+- Parsing brittleness: capture unknown metrics as key-value to avoid strict schemas; log missing/changed fields.
+- News search quality: combine ticker and name; capture source and timestamp when available.
+
+# Appendix  
+Schema DDL (for reference):
+```
+CREATE TABLE IF NOT EXISTS stocks (
+  id INTEGER PRIMARY KEY,
+  ticker TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  avanza_url TEXT NOT NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS stock_metrics (
+  id INTEGER PRIMARY KEY,
+  stock_id INTEGER NOT NULL REFERENCES stocks(id),
+  metric_key TEXT NOT NULL,
+  metric_value TEXT NOT NULL,
+  as_of_date TEXT DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(stock_id, metric_key, as_of_date)
+);
+
+CREATE TABLE IF NOT EXISTS stock_news (
+  id INTEGER PRIMARY KEY,
+  stock_id INTEGER NOT NULL REFERENCES stocks(id),
+  headline TEXT NOT NULL,
+  url TEXT NOT NULL,
+  source TEXT,
+  published_at TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+Initial dependencies (installed via uv): `requests`, `beautifulsoup4`, `smolagents`. Additional packages added as needed during development.
+</PRD>

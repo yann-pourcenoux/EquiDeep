@@ -1,0 +1,56 @@
+Project Name: Stock Research Agent (v1)
+
+Description:
+A minimal tool that scrapes stock data from Avanza.se, stores it in SQLite, and performs news research using smolagents.
+
+Goals:
+1. Scrape stock listings from Avanza.se (https://www.avanza.se/aktier/hitta.html?s=numberOfOwners.desc&o=20000)
+2. Extract key financial data for each stock
+3. Store data in SQLite database
+4. Perform news research using smolagents
+5. Maintain minimal, focused functionality
+
+Non-Goals:
+- Advanced financial analysis
+- User interface
+- Real-time updates
+- Multiple data sources
+
+Target Audience:
+- Developer (learning project)
+- Individual investors (potential future users)
+
+Requirements:
+
+Functional:
+1. Web scraper for Avanza.se stock listings
+   - Parse all stock detail page links
+   - Extract: name, ticker, ratios, financial numbers
+2. SQLite database storage
+   - Schema for stock fundamentals
+   - Schema for research results
+3. Research agent (smolagents)
+   - Latest news research per stock
+   - Store findings in database
+4. Command-line interface
+   - Run full scrape+research pipeline
+   - Run individual components
+
+Non-Functional:
+1. Python implementation
+2. Smolagents for research
+3. SQLite for storage
+4. Minimal dependencies
+5. Clear documentation
+
+Out of Scope:
+- Historical data analysis
+- Price tracking
+- Alerting/notifications
+- Portfolio management
+- User authentication
+
+Roadmap:
+v1: Core scraping + research
+v2: Enhanced research capabilities
+v3: Basic analysis/reporting

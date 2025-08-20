@@ -1,0 +1,911 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Project Scaffolding and Environment Setup",
+        "description": "Initialize repository, directories, uv project, and base CLI entrypoint with logging.",
+        "details": "- Create structure: ./src/avanza_cli/{__init__.py,cli.py,link_harvester.py,stock_scraper.py,translator.py,datastore.py,research.py,http.py}, ./data/, ./tests/, main.py\n- Python 3.11+. Use uv for dependency management.\n- uv add core deps: requests>=2.32.3,<3; beautifulsoup4>=4.12.3,<5; lxml>=5.3.0,<6; smolagents>=0.4.0,<1; duckduckgo_search>=6.3.0,<7; openai>=1.43.0,<2; tenacity>=8.5.0,<9; tqdm>=4.66.5,<5\n- Set up logging basicConfig(level=INFO, format='%(asctime)s %(levelname)s %(message)s'). Ensure ./data exists at startup.\n- main.py skeleton:\n  if __name__ == '__main__': from avanza_cli.cli import app; app()\n- cli.py will expose a run() function callable via `uv run main.py run` using argparse.",
+        "testStrategy": "- Run `uv run python -V` to confirm Python version.\n- Run `uv add <pkg>` to confirm install.\n- Execute `uv run main.py run --help` prints usage.\n- Verify logs print to stdout and ./data is created on first run.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Initialize git repo and uv project scaffold",
+            "description": "Create a new git repository and initialize a uv-managed Python project targeting Python 3.11+.",
+            "dependencies": [],
+            "details": "1) In the project root, initialize git and basic ignores:\n- git init\n- Create .gitignore with common entries:\n  .venv/\n  .uv/\n  __pycache__/\n  .pytest_cache/\n  .mypy_cache/\n  .ruff_cache/\n  .coverage\n  dist/\n  build/\n  .DS_Store\n  .idea/\n  .vscode/\n  .env\n  .env.*\n  data/*\n  !data/.gitkeep\n\n2) Initialize a uv project and pin Python 3.11+:\n- uv init\n- Optionally pin interpreter: uv python pin \">=3.11\"\n- Edit pyproject.toml to ensure:\n  [project]\n  name = \"avanza-cli\"\n  version = \"0.0.0\"\n  description = \"CLI for Avanza scraping and research\"\n  readme = \"README.md\"\n  requires-python = \">=3.11\"\n\nThis establishes the package metadata and Python version requirement.",
+            "status": "pending",
+            "testStrategy": "- git status shows a clean repo with .gitignore tracked.\n- pyproject.toml exists and contains requires-python >=3.11.\n- uv run python -V prints a Python version >=3.11."
+          },
+          {
+            "id": 2,
+            "title": "Create source layout, package, and entry files",
+            "description": "Lay down the src/ package structure and required files including main.py and placeholders for modules.",
+            "dependencies": [],
+            "details": "1) Create directories:\n- mkdir -p src/avanza_cli\n- mkdir -p data tests\n- touch data/.gitkeep tests/__init__.py\n\n2) Create package files:\n- touch src/avanza_cli/__init__.py\n- touch src/avanza_cli/cli.py\n- touch src/avanza_cli/link_harvester.py\n- touch src/avanza_cli/stock_scraper.py\n- touch src/avanza_cli/translator.py\n- touch src/avanza_cli/datastore.py\n- touch src/avanza_cli/research.py\n- touch src/avanza_cli/http.py\n\n3) Seed minimal module content so imports succeed:\n- src/avanza_cli/__init__.py:\n  __all__ = [\n      \"cli\",\n      \"link_harvester\",\n      \"stock_scraper\",\n      \"translator\",\n      \"datastore\",\n      \"research\",\n      \"http\",\n  ]\n- For each other module, add a module-level docstring and a \"pass\" placeholder.\n\n4) Create main.py skeleton at project root:\n- main.py:\n  if __name__ == \"__main__\":\n      from avanza_cli.cli import app\n      app()\n\nThis will be augmented with logging and data directory setup in a later subtask.",
+            "status": "pending",
+            "testStrategy": "- uv run python -c \"import avanza_cli; import avanza_cli.cli\" succeeds.\n- uv run python main.py --help shows default argparse error until CLI is implemented."
+          },
+          {
+            "id": 3,
+            "title": "Add core dependencies with uv",
+            "description": "Install required runtime dependencies and lock them for reproducibility.",
+            "dependencies": [],
+            "details": "Run a single add command to install and record constraints:\n- uv add \"requests>=2.32.3,<3\" \"beautifulsoup4>=4.12.3,<5\" \"lxml>=5.3.0,<6\" \"smolagents>=0.4.0,<1\" \"duckduckgo_search>=6.3.0,<7\" \"openai>=1.43.0,<2\" \"tenacity>=8.5.0,<9\" \"tqdm>=4.66.5,<5\"\nOptionally create a lockfile for CI stability:\n- uv lock",
+            "status": "pending",
+            "testStrategy": "- uv run python -c \"import requests, bs4, lxml, tenacity, tqdm\" exits 0.\n- pyproject and lockfile reflect the added dependencies."
+          },
+          {
+            "id": 4,
+            "title": "Configure logging and ensure ./data directory at startup",
+            "description": "Set up global logging and guarantee the data directory exists before CLI execution.",
+            "dependencies": [],
+            "details": "Update main.py to configure logging and create the data directory before invoking the CLI:\n\n- main.py:\n  from pathlib import Path\n  import logging\n\n  def _setup_runtime():\n      logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')\n      Path(\"./data\").mkdir(parents=True, exist_ok=True)\n\n  if __name__ == \"__main__\":\n      _setup_runtime()\n      from avanza_cli.cli import app\n      app()\n\nThis ensures logs go to stdout and the ./data directory exists even on the first run.",
+            "status": "pending",
+            "testStrategy": "- Remove the data directory if present; run: uv run python main.py --help (after CLI is in place) and confirm ./data is recreated.\n- Run: uv run python -c \"import logging; logging.getLogger().info('test')\" and verify basicConfig format when main.py runs the CLI.\n- Manual: uv run main.py run (after next subtask) prints INFO lines with timestamps."
+          },
+          {
+            "id": 5,
+            "title": "Implement argparse-based CLI entrypoint with run()",
+            "description": "Create a minimal argparse CLI in cli.py exposing a run() function and an app() dispatcher callable via `uv run main.py run`.",
+            "dependencies": [],
+            "details": "Implement cli.py:\n\n- src/avanza_cli/cli.py:\n  import argparse\n  import logging\n\n  def run(args: argparse.Namespace) -> int:\n      logging.info(\"Starting avanza-cli run (skeleton)\")\n      # Placeholder; real pipeline will be implemented in later tasks\n      logging.info(\"Completed avanza-cli run (skeleton)\")\n      return 0\n\n  def _build_parser() -> argparse.ArgumentParser:\n      parser = argparse.ArgumentParser(prog=\"avanza-cli\", description=\"Avanza CLI\")\n      subparsers = parser.add_subparsers(dest=\"command\", required=True)\n\n      p_run = subparsers.add_parser(\"run\", help=\"Run the pipeline (skeleton)\")\n      # Flags will be added in later tasks; keep minimal now\n      p_run.set_defaults(func=run)\n\n      return parser\n\n  def app() -> int:\n      parser = _build_parser()\n      args = parser.parse_args()\n      func = getattr(args, \"func\", None)\n      if func is None:\n          parser.print_help()\n          return 2\n      return int(func(args) or 0)\n\nThis ensures `uv run main.py run` invokes run() and integrates with the logging configured in main.py.",
+            "status": "pending",
+            "testStrategy": "- uv run main.py run --help shows usage text for the run subcommand.\n- uv run main.py run prints INFO logs and exits 0.\n- First run creates ./data and subsequent runs do not error if it already exists."
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "SQLite DataStore and Schema",
+        "description": "Implement SQLite connection management, schema creation, and CRUD helpers per PRD.",
+        "details": "- Location: ./data/stocks.sqlite. Use sqlite3, enable WAL and foreign_keys.\n- Create tables exactly as PRD DDL. Execute on init.\n- Provide functions:\n  - get_conn(db_path='./data/stocks.sqlite') -> sqlite3.Connection with row_factory=sqlite3.Row\n  - upsert_stock(ticker:str, name:str, avanza_url:str) -> int (stock_id). SQL:\n    INSERT INTO stocks(ticker,name,avanza_url) VALUES(?,?,?)\n    ON CONFLICT(ticker) DO UPDATE SET name=excluded.name, avanza_url=excluded.avanza_url\n    RETURNING id;\n    Fallback: SELECT id FROM stocks WHERE ticker=? if RETURNING unsupported.\n  - insert_metric(stock_id:int, metric_key:str, metric_value:str, as_of_date:Optional[str]=None) -> int\n  - insert_news(stock_id:int, headline:str, url:str, source:Optional[str], published_at:Optional[str]) -> int\n- Wrap writes in transactions; commit per stock to reduce lock contention.\n- Add utility to count summary rows for final report.",
+        "testStrategy": "- Unit test: on temp DB, call schema init, then upsert two times and verify single row with updated fields.\n- Insert multiple metrics for same stock; verify UNIQUE constraint includes as_of_date to allow multiple days.\n- Insert news and SELECT back.\n- Test PRAGMAs applied: pragma foreign_keys=ON; pragma journal_mode='wal'.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Connection management with PRAGMAs and helpers",
+            "description": "Implement SQLite connection management in datastore.py, including get_conn, PRAGMA setup (WAL, foreign_keys), Row row_factory, and a write transaction helper.",
+            "dependencies": [],
+            "details": "Implementation plan:\n- File: datastore.py\n- Imports: import os, sqlite3, datetime\n- get_conn(db_path='./data/stocks.sqlite') -> sqlite3.Connection:\n  - Ensure os.makedirs(os.path.dirname(db_path), exist_ok=True)\n  - conn = sqlite3.connect(db_path, detect_types=sqlite3.PARSE_DECLTYPES)\n  - conn.row_factory = sqlite3.Row\n  - Apply PRAGMAs immediately after connect:\n    - conn.execute(\"PRAGMA journal_mode=WAL;\")\n    - conn.execute(\"PRAGMA synchronous=NORMAL;\")\n    - conn.execute(\"PRAGMA foreign_keys=ON;\")\n    - conn.execute(\"PRAGMA busy_timeout=5000;\")\n  - Return conn\n- Implement apply_pragmas(conn) as an internal helper called by get_conn to keep logic reusable/tests simpler.\n- Implement a context manager write_txn(conn, mode='IMMEDIATE') to wrap write operations:\n  - Start with conn.execute(f\"BEGIN {mode};\")\n  - yield\n  - On success: conn.commit(); on exception: conn.rollback(); re-raise\n- Notes:\n  - Keep default isolation_level (implicit transactions). The write_txn handles BEGIN/COMMIT to ensure transactional writes and reduced lock contention.\n  - All CRUD helpers will use write_txn to wrap their writes so the caller can group multiple operations per stock.",
+            "status": "pending",
+            "testStrategy": "Unit tests:\n- Create a temporary DB path, call get_conn, and assert:\n  - conn.row_factory is sqlite3.Row\n  - PRAGMAs: SELECT name FROM pragma_journal_mode; returns 'wal' (or pragma journal_mode should return 'wal'); PRAGMA foreign_keys returns 1\n- Use write_txn to insert a dummy write (e.g., CREATE TABLE t(x) and INSERT), ensure commit on success, rollback on error."
+          },
+          {
+            "id": 2,
+            "title": "Schema creation per PRD DDL and init hook",
+            "description": "Create schema module that executes the PRD-provided DDL exactly on initialization. Provide ensure_schema(conn) and init_db() helpers.",
+            "dependencies": [
+              "2.1"
+            ],
+            "details": "Implementation plan:\n- File: schema.py\n- Define PRD_DDL: a single string constant containing the exact DDL from the PRD (copy verbatim). This must define at least: stocks, metrics, news tables with correct types, constraints, and indexes. Requirements to match tests/PRD:\n  - stocks: id INTEGER PRIMARY KEY, ticker TEXT UNIQUE NOT NULL, name TEXT, avanza_url TEXT\n  - metrics: id INTEGER PRIMARY KEY, stock_id INTEGER NOT NULL REFERENCES stocks(id) ON DELETE CASCADE, metric_key TEXT NOT NULL, metric_value TEXT NOT NULL, as_of_date TEXT, and a UNIQUE(stock_id, metric_key, as_of_date)\n  - news: id INTEGER PRIMARY KEY, stock_id INTEGER NOT NULL REFERENCES stocks(id) ON DELETE CASCADE, headline TEXT NOT NULL, url TEXT NOT NULL, source TEXT, published_at TEXT\n  - Add indexes per PRD (e.g., metrics(stock_id), news(stock_id))\n- def ensure_schema(conn: sqlite3.Connection) -> None:\n  - Use conn.executescript(PRD_DDL) so multiple statements run atomically inside a transaction\n- def init_db(db_path='./data/stocks.sqlite') -> sqlite3.Connection:\n  - from datastore import get_conn; conn = get_conn(db_path)\n  - ensure_schema(conn)\n  - return conn\n- Call ensure_schema at application startup or in tests before CRUD ops.",
+            "status": "pending",
+            "testStrategy": "Unit tests on a temp DB:\n- Call init_db(temp_path) to create the DB and schema\n- Verify tables exist by querying sqlite_master\n- Verify constraints needed by later tests: UNIQUE on (stock_id, metric_key, as_of_date); stocks.ticker is UNIQUE; foreign_keys pragma is ON"
+          },
+          {
+            "id": 3,
+            "title": "Implement upsert_stock with RETURNING fallback",
+            "description": "Provide upsert_stock(ticker, name, avanza_url) -> int using the provided SQL with RETURNING id, and a fallback path for environments without RETURNING support. Wrap write in a transaction and commit per call.",
+            "dependencies": [
+              "2.1",
+              "2.2"
+            ],
+            "details": "Implementation plan:\n- File: datastore.py (same module as get_conn)\n- Signature: def upsert_stock(ticker: str, name: str, avanza_url: str) -> int\n- Logic:\n  - conn = get_conn()\n  - with write_txn(conn):\n    - Try the primary SQL (exactly as specified):\n      INSERT INTO stocks(ticker,name,avanza_url) VALUES(?,?,?)\n      ON CONFLICT(ticker) DO UPDATE SET name=excluded.name, avanza_url=excluded.avanza_url\n      RETURNING id;\n    - Execute with (ticker, name, avanza_url)\n    - Fetch the single row and return row[0] or row['id'] depending on driver result shape\n    - Fallback if sqlite3.OperationalError mentions RETURNING unsupported:\n      - Execute same INSERT..ON CONFLICT..DO UPDATE but without RETURNING (split into two steps: INSERT OR IGNORE then UPDATE when needed, or keep ON CONFLICT update form)\n      - Then SELECT id FROM stocks WHERE ticker=? and return that id\n  - The transaction ensures a single commit per stock upsert and reduces lock contention.\n- Error handling:\n  - Raise ValueError if ticker is empty\n  - Convert avanza_url to str and store as-is per PRD\n- Keep function side-effect free beyond the DB write; no logging inside to keep it testable.",
+            "status": "pending",
+            "testStrategy": "Unit tests on temp DB:\n- Call ensure_schema first\n- upsert_stock('VOLV B','Volvo AB B','https://...') returns an id\n- Call again with updated name/url; assert returned id is same and row fields are updated, and there is exactly one row in stocks"
+          },
+          {
+            "id": 4,
+            "title": "Implement insert_metric helper",
+            "description": "Create insert_metric(stock_id, metric_key, metric_value, as_of_date=None) -> int to insert metrics with correct default date handling and transactional write.",
+            "dependencies": [
+              "2.3"
+            ],
+            "details": "Implementation plan:\n- File: datastore.py\n- Signature: def insert_metric(stock_id: int, metric_key: str, metric_value: str, as_of_date: str | None = None) -> int\n- Logic:\n  - If as_of_date is None: use datetime.date.today().isoformat()\n  - Validate metric_key and metric_value are non-empty strings\n  - conn = get_conn()\n  - with write_txn(conn):\n    - Try INSERT with RETURNING id:\n      INSERT INTO metrics(stock_id, metric_key, metric_value, as_of_date) VALUES(?,?,?,?) RETURNING id;\n    - If OperationalError due to RETURNING, run INSERT without RETURNING then SELECT id FROM metrics WHERE rowid=last_insert_rowid() (or SELECT id ORDER BY id DESC LIMIT 1 in same txn) to fetch the new id\n  - Return the metric id\n- Notes:\n  - This is an insert (not an upsert). Duplicate (stock_id, metric_key, as_of_date) should raise IntegrityError per schema; surface it to caller so they can decide to skip/update.\n  - Foreign key must be enforced (PRAGMA foreign_keys=ON via connection setup).",
+            "status": "pending",
+            "testStrategy": "Unit tests:\n- Ensure schema initialized and a stock exists\n- Insert multiple metrics for the same stock with different as_of_date values; assert they succeed and count increments\n- Attempt duplicate insert with same (stock_id, metric_key, as_of_date); assert IntegrityError\n- Verify returned id is an int"
+          },
+          {
+            "id": 5,
+            "title": "Implement insert_news and summary counters utility",
+            "description": "Create insert_news(stock_id, headline, url, source=None, published_at=None) -> int and a utility to count summary rows for reporting.",
+            "dependencies": [
+              "2.3",
+              "2.2"
+            ],
+            "details": "Implementation plan:\n- File: datastore.py\n- insert_news signature: def insert_news(stock_id: int, headline: str, url: str, source: str | None, published_at: str | None) -> int\n  - Validate headline and url are non-empty\n  - conn = get_conn()\n  - with write_txn(conn):\n    - Try INSERT with RETURNING id:\n      INSERT INTO news(stock_id, headline, url, source, published_at) VALUES(?,?,?,?,?) RETURNING id;\n    - Fallback if RETURNING unsupported: INSERT without RETURNING, then SELECT id FROM news WHERE rowid=last_insert_rowid()\n  - Return the news id\n- Summary utility:\n  - def count_summary_rows(db_path: str = './data/stocks.sqlite') -> dict:\n    - conn = get_conn(db_path)\n    - Execute SELECT COUNT(*) FROM stocks, metrics, news separately\n    - Return {'stocks': n_stocks, 'metrics': n_metrics, 'news': n_news}\n  - This will be used by the CLI to print final totals\n- All writes are wrapped in transactions and commit per call; higher-level orchestration can batch multiple inserts per stock by using a shared connection and write_txn if desired.",
+            "status": "pending",
+            "testStrategy": "Unit tests on temp DB:\n- Insert a stock, add two news rows, then call count_summary_rows and validate counts for stocks/news/metrics\n- Insert a news row and immediately SELECT it back to verify persistence and fields\n- Validate foreign key enforcement by trying to insert news with a non-existent stock_id and expecting an IntegrityError"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "HTTP Client Utilities",
+        "description": "Provide a resilient requests.Session with timeouts, headers, and retry/backoff for polite scraping.",
+        "details": "- Implement in http.py: build_session() -> requests.Session\n- Set headers: User-Agent like modern browser, Accept-Language: sv,en;q=0.9, Accept: text/html.\n- Default timeout=(5,20). Add small randomized sleep between requests (0.5–1.5s) to be polite.\n- Use tenacity retry for GET on status codes {429,500,502,503,504} with exponential backoff (start=0.5, max=8, jitter).\n- Function get_html(url:str, session:Session) -> str:\n  @retry(...)\n  resp = session.get(url, timeout=timeout); resp.raise_for_status(); return resp.text\n- Consider robots.txt manually if needed (log a note); respect site TOS.\n- Parse with lxml in scraper; keep utilities lean.",
+        "testStrategy": "- Mock session to simulate 500 then 200; ensure retries occur and final HTML returned.\n- Validate headers present in outgoing request.\n- Measure delay called between requests (patch time.sleep).\n- Ensure timeouts propagate and raise on connection hang.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create http.py and implement build_session() with default headers",
+            "description": "Add http.py module and implement a function build_session() -> requests.Session that returns a configured session with polite, browser-like defaults.",
+            "dependencies": [],
+            "details": "Implementation steps:\n- File: src/avanza_cli/http.py\n- Imports: typing, logging, requests\n- Define module logger: logger = logging.getLogger(__name__)\n- Define constants:\n  - DEFAULT_TIMEOUT: tuple[float, float] = (5.0, 20.0)\n  - DEFAULT_HEADERS: dict[str, str] with keys:\n    - \"User-Agent\": A modern desktop browser UA, e.g., \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36\"\n    - \"Accept-Language\": \"sv,en;q=0.9\"\n    - \"Accept\": \"text/html\"\n- Implement build_session() -> requests.Session:\n  - s = requests.Session()\n  - s.headers.update(DEFAULT_HEADERS)\n  - Return s\n- Keep utilities lean: do not add urllib3.Retry to adapters (we will handle retry via tenacity in get_html).\n- Add type hints and docstring describing purpose and headers.",
+            "status": "pending",
+            "testStrategy": "- Use responses or requests-mock to capture a request made with session = build_session().\n- Assert outgoing request includes the expected headers (User-Agent, Accept-Language, Accept).\n- Smoke: create session, ensure it is a requests.Session and default headers are set."
+          },
+          {
+            "id": 2,
+            "title": "Add polite randomized delay utility",
+            "description": "Implement a small, randomized sleep between requests to be polite and reduce load. Keep it injectable for tests.",
+            "dependencies": [],
+            "details": "Implementation steps:\n- In http.py, import time and random.\n- Implement function _polite_sleep(min_delay: float = 0.5, max_delay: float = 1.5) -> float:\n  - delay = random.uniform(min_delay, max_delay)\n  - time.sleep(delay)\n  - logger.debug(f\"Polite sleep: {delay:.2f}s\")\n  - return delay (returning aids testing)\n- Keep it internal (leading underscore) but callable from get_html.\n- Optionally allow disabling via env var for power users/tests: if os.getenv(\"HTTP_DISABLE_DELAY\") == \"1\": skip sleep and return 0.0.",
+            "status": "pending",
+            "testStrategy": "- Monkeypatch/patch time.sleep to a stub that records the argument and does not actually sleep.\n- Seed random or assert range: ensure returned delay is within [0.5, 1.5].\n- Verify that when HTTP_DISABLE_DELAY=1, sleep is skipped and returned delay is 0.0."
+          },
+          {
+            "id": 3,
+            "title": "Implement tenacity-backed get_html() with retries, backoff, and timeouts",
+            "description": "Provide get_html(url: str, session: requests.Session) -> str that performs a GET with default timeout, polite delay, and tenacity retry on specific HTTP status codes.",
+            "dependencies": [
+              "3.1",
+              "3.2"
+            ],
+            "details": "Implementation steps:\n- Imports: from requests import Session, exceptions as req_exc; from tenacity import retry, wait_exponential, wait_random, stop_after_attempt, retry_if_exception; from typing import Optional\n- Define STATUS_FOR_RETRY = {429, 500, 502, 503, 504}\n- Define predicate:\n  def _retry_on_http_error(exc: Exception) -> bool:\n      if isinstance(exc, req_exc.HTTPError) and getattr(exc, 'response', None) is not None:\n          return exc.response.status_code in STATUS_FOR_RETRY\n      return False\n- Configure retry decorator:\n  retry_policy = dict(\n      reraise=True,\n      stop=stop_after_attempt(5),\n      wait=wait_exponential(multiplier=0.5, max=8) + wait_random(0, 0.5),  # exponential backoff with jitter\n      retry=retry_if_exception(_retry_on_http_error),\n  )\n- Implement function:\n  @retry(**retry_policy)\n  def get_html(url: str, session: Session, timeout: tuple[float, float] = DEFAULT_TIMEOUT, respect_robots: bool = False) -> str:\n      \"\"\"GET the URL and return HTML text. Retries on STATUS_FOR_RETRY. Timeouts default to (5,20).\"\"\"\n      # Optional robots check handled in subtask 4 if respect_robots=True\n      _polite_sleep()  # polite delay before each attempt\n      resp = session.get(url, timeout=timeout)\n      resp.raise_for_status()\n      return resp.text\n- Logging: on exceptions, tenacity will retry; consider tenacity logging via before_sleep log hook if desired; otherwise keep lean.\n- Important: Do NOT add retries for timeouts or connection errors per spec; only the specified HTTP status codes should trigger retry. Other exceptions will propagate.",
+            "status": "pending",
+            "testStrategy": "- Mock session.get behavior: first call returns a Response with status_code=500 and raises for status; second returns 200 with HTML text. Ensure get_html returns the final HTML and that session.get was called twice.\n- Validate that time.sleep was called on each attempt by patching time.sleep and asserting call count >= attempts.\n- Validate default timeout is passed: patch session.get to capture kwargs and assert timeout == (5, 20).\n- Simulate a ConnectTimeout (req_exc.ConnectTimeout) and assert it is not retried and propagates immediately."
+          },
+          {
+            "id": 4,
+            "title": "Implement optional robots.txt awareness and logging",
+            "description": "Add a lightweight robots.txt checker that can be optionally enforced and always logs when disallowed. Keep disabled by default to stay lean.",
+            "dependencies": [
+              "3.1"
+            ],
+            "details": "Implementation steps:\n- Imports: urllib.parse.urlparse, urllib.robotparser, threading\n- Implement a simple per-netloc cache for RobotFileParser objects: _ROBOTS_CACHE: dict[str, robotparser.RobotFileParser] and a Lock for thread safety.\n- Helper: def _get_robot_parser(netloc: str) -> robotparser.RobotFileParser | None: returns cached parser if present, else creates an empty parser and caches placeholder; actual fetch happens in check.\n- Implement function check_robots_allowed(url: str, session: requests.Session, user_agent: str | None = None, timeout: tuple[float, float] = DEFAULT_TIMEOUT) -> bool:\n  - ua = user_agent or DEFAULT_HEADERS[\"User-Agent\"]\n  - Parse netloc; robots_url = f\"{scheme}://{netloc}/robots.txt\"\n  - If not cached/fresh, fetch robots via session.get(robots_url, timeout=timeout); on 200, rp.parse(content.splitlines()); on non-200 or exception, log at INFO and return True (fail-open) but note site TOS should be respected.\n  - Return rp.can_fetch(ua, url)\n- Wire into get_html: if respect_robots is True, call check_robots_allowed; if False result, log a warning and raise PermissionError(\"Robots.txt disallows fetching this URL\"). If respect_robots is False and disallowed, log a note INFO and continue.\n- Keep fetching robots.txt polite by not retrying and honoring DEFAULT_TIMEOUT.",
+            "status": "pending",
+            "testStrategy": "- Mock session.get for robots.txt to return a disallow rule for a path and assert check_robots_allowed returns False.\n- With respect_robots=True, assert get_html raises PermissionError and does not call session.get for the page.\n- With respect_robots=False, assert a warning/info is logged and get_html proceeds to call session.get."
+          },
+          {
+            "id": 5,
+            "title": "Finalize exports and add unit tests covering headers, retries, delay, and timeouts",
+            "description": "Export public API, add docstrings and typing, and implement tests per strategy to validate correctness and resilience.",
+            "dependencies": [
+              "3.3",
+              "3.4"
+            ],
+            "details": "Implementation steps:\n- In http.py, set __all__ = [\"build_session\", \"get_html\", \"check_robots_allowed\", \"DEFAULT_TIMEOUT\"]\n- Ensure all functions have clear docstrings and types.\n- Tests (pytest):\n  - test_build_session_headers: session = build_session(); using responses or a dummy endpoint, assert headers present.\n  - test_get_html_retries_then_success: mock session.get to raise HTTPError(500) first, then return 200 and text; assert output text and call count.\n  - test_polite_sleep_range: patch time.sleep and random.uniform to return a specific value within [0.5, 1.5]; assert value used.\n  - test_timeout_propagates: mock session.get to raise requests.exceptions.ConnectTimeout; assert get_html raises without retrying (call count == 1).\n  - test_robots_enforcement: mock robots.txt to disallow; with respect_robots=True assert PermissionError; with False assert log and proceed.\n- Keep tests offline using mocks; do not perform real network calls.",
+            "status": "pending",
+            "testStrategy": "- Run pytest; all tests should pass locally and in CI.\n- Use monkeypatch/patch for time.sleep and random.uniform for determinism.\n- Verify logging messages with caplog for robots notes and warnings."
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "LinkHarvester Implementation",
+        "description": "Fetch the Avanza seed page and collect all stock detail links on that page only, deduped and absolute.",
+        "details": "- Seed URL: https://www.avanza.se/aktier/hitta.html?s=numberOfOwners.desc&o=20000\n- In link_harvester.py implement: harvest_links(session) -> list[str]\n- Steps:\n  html = get_html(seed_url)\n  soup = BeautifulSoup(html, 'lxml')\n  Find <a> tags whose href matches regex r\"^/aktier/om-aktien/[^\\s]+\" or contains '/aktier/om-aktien/'.\n  Use urllib.parse.urljoin to build absolute URLs; keep only https://www.avanza.se/... domain.\n  Deduplicate with set while preserving order.\n- Log count and few samples.\n- Return list; do not paginate beyond loaded page (MVP).",
+        "testStrategy": "- Offline fixture of the seed HTML. Verify harvested links match expected count and pattern.\n- Test robustness: include relative and absolute hrefs; ensure urljoin correct.\n- Ensure duplicates collapsed and non-stock links ignored.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create LinkHarvester skeleton and constants",
+            "description": "Set up link_harvester.py with the harvest_links(session) function signature, constants, imports, and logger. This provides the module foundation to implement the link harvesting logic.",
+            "dependencies": [],
+            "details": "Implementation steps:\n- In src/avanza_cli/link_harvester.py ensure the following:\n  - Imports: from __future__ import annotations; import logging, re; from bs4 import BeautifulSoup; from urllib.parse import urljoin, urlsplit, urlunsplit; from typing import List; from .http import get_html\n  - Module-level constants:\n    SEED_URL = \"https://www.avanza.se/aktier/hitta.html?s=numberOfOwners.desc&o=20000\"\n    AVANZA_HOST = \"www.avanza.se\"\n    PATH_SUBSTR = \"/aktier/om-aktien/\"\n    RELATIVE_PATH_RE = re.compile(r\"^/aktier/om-aktien/[^\\s]+\")\n  - Logger: logger = logging.getLogger(__name__)\n  - Stub function with docstring:\n    def harvest_links(session) -> list[str]:\n        \"\"\"Fetch the Avanza seed page and collect all stock detail links on that page only, deduped and absolute.\"\"\"\n        # Will be implemented in subsequent subtasks\n        raise NotImplementedError\n- Ensure the file is included in __all__ or imported where needed by CLI later (not required for this task, but keep path consistent).",
+            "status": "pending",
+            "testStrategy": "Static checks: run ruff/flake8 or mypy if configured. Ensure module imports correctly: `python -c 'from avanza_cli.link_harvester import harvest_links; print(harvest_links.__name__)'`."
+          },
+          {
+            "id": 2,
+            "title": "Implement HTML retrieval using HTTP utilities",
+            "description": "Implement the initial part of harvest_links to fetch the seed page HTML using the shared HTTP client utility get_html.",
+            "dependencies": [
+              "4.1"
+            ],
+            "details": "Implementation within harvest_links(session):\n- Validate the session argument is provided; rely on the session configured by http.build_session() in Task 3.\n- Fetch HTML strictly from SEED_URL without any pagination or additional requests:\n  html = get_html(SEED_URL, session)\n- Add basic guardrails:\n  - If html is falsy or very short, log a warning and return an empty list.\n- Keep this section small and side-effect free beyond the single GET; no additional sleeps here (handled by HTTP utils).",
+            "status": "pending",
+            "testStrategy": "Unit test with monkeypatching: patch avanza_cli.http.get_html to return a minimal HTML string and assert that harvest_links proceeds to parsing steps in subsequent subtasks. Also test a None/empty return to ensure [] is returned without error."
+          },
+          {
+            "id": 3,
+            "title": "Parse seed HTML and extract candidate <a> hrefs",
+            "description": "Parse the fetched HTML with BeautifulSoup and select anchor tags that look like stock detail links based on the required patterns.",
+            "dependencies": [
+              "4.2"
+            ],
+            "details": "Extend harvest_links(session):\n- soup = BeautifulSoup(html, 'lxml')\n- Collect candidates from all <a> tags:\n  - Iterate for a in soup.find_all('a'):\n    href = (a.get('href') or '').strip()\n    if not href: continue\n    if (PATH_SUBSTR in href) or RELATIVE_PATH_RE.match(href):\n        collect href into a list (e.g., raw_hrefs)\n- Do not follow or click anything; only inspect the current DOM.\n- Avoid filtering/normalization here beyond the selection predicate; normalization is in the next subtask.",
+            "status": "pending",
+            "testStrategy": "Use a synthetic HTML snippet containing: relative links like '/aktier/om-aktien/ABB', absolute links like 'https://www.avanza.se/aktier/om-aktien/ERIC-B', non-matching links; assert that only candidate hrefs are collected prior to normalization."
+          },
+          {
+            "id": 4,
+            "title": "Normalize to absolute Avanza URLs and dedupe preserving order",
+            "description": "Convert collected hrefs to absolute HTTPS URLs under www.avanza.se, remove fragments, filter to the correct host, and deduplicate while preserving source order.",
+            "dependencies": [
+              "4.3"
+            ],
+            "details": "Extend harvest_links(session):\n- For each href in raw_hrefs:\n  - abs_url = urljoin(SEED_URL, href)\n  - Parse: parts = urlsplit(abs_url)\n  - Enforce domain and scheme:\n    if parts.scheme != 'https' or parts.netloc != AVANZA_HOST: continue\n  - Strip fragments to avoid duplicating same page with anchors:\n    cleaned = urlunsplit((parts.scheme, parts.netloc, parts.path, parts.query, ''))\n  - Keep only those where PATH_SUBSTR in parts.path (defensive check after join).\n- Deduplicate preserving original order:\n  seen = set(); results = []\n  for u in cleaned_urls:\n      if u not in seen:\n          seen.add(u); results.append(u)\n- After building results, do not add or modify further; do not paginate beyond the loaded page.\n- Return results at the end of the function (after logging in the next subtask).",
+            "status": "pending",
+            "testStrategy": "Unit tests with synthetic inputs combining: relative vs absolute URLs, http vs https, wrong host (e.g., m.avanza.se), fragments (#section), duplicate URLs. Assert that: (a) all results start with 'https://www.avanza.se/aktier/om-aktien/', (b) order matches first occurrence, (c) duplicates are removed, (d) fragments removed, (e) non-https or wrong host excluded."
+          },
+          {
+            "id": 5,
+            "title": "Add logging, finalize return, and write tests with offline fixture",
+            "description": "Add INFO-level logging of harvested count and a few sample links; finalize the function to return the list. Create offline tests using a saved fixture of the seed page.",
+            "dependencies": [
+              "4.4"
+            ],
+            "details": "Implementation in harvest_links(session):\n- Before returning results, log summary:\n  - logger.info(\"Harvested %d stock links from seed\", len(results))\n  - If results: logger.debug(\"Sample links: %s\", results[:5]) or logger.info with first 3–5 samples depending on logging policy.\n- Return results as list[str].\nTest implementation:\n- Place a fixture file at tests/fixtures/avanza_seed.html containing a saved copy of the seed page.\n- tests/test_link_harvester.py:\n  - Test 1 (fixture): monkeypatch avanza_cli.http.get_html to return the fixture HTML string; call harvest_links(session=fake_session) and assert:\n    * len(result) > 0\n    * all(u.startswith('https://www.avanza.se/aktier/om-aktien/') for u in result)\n    * result is deduped (len(set(result)) == len(result))\n  - Test 2 (robustness): build a minimal HTML snippet with mixed hrefs (relative, absolute, duplicates, wrong host, fragments) and patch get_html to return it; assert normalization and dedupe behavior as in prior subtasks.\n  - Optionally capture logs using caplog (pytest) to assert the count log is emitted at INFO and includes the harvested number.\n- Do not perform live network calls in tests.",
+            "status": "pending",
+            "testStrategy": "Run pytest. Validate: count log present via caplog, all links match expected pattern, duplicates removed, wrong domain excluded, relative links properly joined. Ensure no additional requests are made beyond the single get_html call (can assert patched function called once)."
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "StockScraper Implementation",
+        "description": "Scrape each stock detail page for name, ticker, and key-value ratios/financial metrics with resilient selectors.",
+        "details": "- In stock_scraper.py implement: scrape_stock(url:str, session)-> dict with keys: name, ticker, url, metrics (dict[str,str])\n- Parsing strategy (handle minor DOM changes):\n  - Name: try selectors in order: meta[property='og:title'] content; h1, [data-qa*='page-title']; title tag cleaning. Strip site suffixes.\n  - Ticker: look for label text matching ('Ticker','Kortnamn','Symbol') next to value (dl dt+dd, table th+td). Regex: r\"\\b[A-Z0-9.-]{2,12}\\b\" in parentheses near name as fallback.\n  - Metrics: collect from definition lists (dl/dt/dd) and tables: for each row, label=text of th/dt, value=text of td/dd. Normalize whitespace; keep exact Swedish keys for translation later.\n- Return only visible text; skip empty values.\n- Include small sleep between page fetches to be polite.\n- Avoid JS; if empty content detected, log warning for potential dynamic content.",
+        "testStrategy": "- Use saved HTML pages as fixtures and assert extraction correctness.\n- Simulate variants (table vs dl); ensure both paths work.\n- Ensure metrics dict has >0 entries for typical page; handle pages with missing fields gracefully.\n- Validate ticker normalization (uppercase, strip).",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create scrape_stock scaffold with polite fetch and parsing setup",
+            "description": "Implement the scrape_stock(url: str, session) -> dict function scaffold. Fetch the HTML with a small randomized sleep to be polite, parse with BeautifulSoup(lxml), set up helpers for normalized and visible text extraction, and basic logging for dynamic/empty content detection.",
+            "dependencies": [],
+            "details": "Implementation steps:\n- Location: src/avanza_cli/stock_scraper.py\n- Imports: typing (Dict), time, random, logging, re; from bs4 import BeautifulSoup\n- Define function: def scrape_stock(url: str, session) -> dict:\n  - Add randomized sleep before request: time.sleep(random.uniform(0.5, 1.5))\n  - Perform GET using the provided session: resp = session.get(url, timeout=(5, 20)); resp.raise_for_status(); html = resp.text\n  - If html is empty or very short (e.g., len(html) < 200), log warning that the page may be dynamic/empty.\n  - soup = BeautifulSoup(html, 'lxml')\n  - Define helpers:\n    - def norm_text(s: str) -> str: return re.sub(r\"\\s+\", \" \", s or \"\").strip()\n    - def visible_text(el) -> str: return norm_text(\" \".join(el.stripped_strings)) if el else \"\"\n    - def first_select_text(soup, selectors: list[str]) -> str: iterate selectors, for each selector: el = soup.select_one(selector); if el: return visible_text(el); return \"\"\n  - Prepare a result dict structure placeholder: result = {\"name\": None, \"ticker\": None, \"url\": url, \"metrics\": {}}\n  - Keep soup and helpers accessible to subsequent extraction steps (within this function).\n  - Defer actual extraction to subsequent steps (name, ticker, metrics), then assemble and return.\n- Logging: logger = logging.getLogger(__name__)\n- Dynamic content warning: If soup.body and len(visible_text(soup.body)) < 100, log a warning about potential JS-only content.",
+            "status": "pending",
+            "testStrategy": "Unit: mock session.get to return minimal HTML and to raise for HTTP errors. Verify polite delay is invoked (patch time.sleep). Ensure BeautifulSoup parses and helpers return normalized strings. Log capture: assert warning logged for very short HTML."
+          },
+          {
+            "id": 2,
+            "title": "Implement resilient name extraction with selector fallbacks and cleaning",
+            "description": "Extract the stock name using a prioritized selector sequence and clean site-specific suffixes. Ensure whitespace normalization and robust fallbacks.",
+            "dependencies": [
+              "5.1"
+            ],
+            "details": "Implementation steps inside scrape_stock after scaffold:\n- Try in order, returning the first non-empty value:\n  1) meta[property='og:title'] attribute 'content'\n  2) h1\n  3) [data-qa*='page-title']\n  4) <title> tag (page title)\n- For each candidate, apply cleaning:\n  - name = norm_text(candidate)\n  - Remove site suffixes using regex chain on the full string (case-insensitive):\n    - patterns = [r\"\\s*[-|–]\\s*Avanza\\s*$\", r\"\\s*\\|\\s*Avanza\\s*$\", r\"\\s*–\\s*Avanza\\s*$\"]\n    - for p in patterns: name = re.sub(p, \"\", name, flags=re.IGNORECASE)\n  - If name contains both name and ticker like \"Bolag AB (BOL) - Avanza\", do not strip the ticker here; keep raw name for fallback parsing in ticker step.\n- Assign result['name'] = name if non-empty else None.\n- If still empty, leave None and log at INFO for observability.",
+            "status": "pending",
+            "testStrategy": "Fixture HTML variants: (a) og:title present with suffix, (b) h1 present, (c) data-qa title, (d) only <title>. Assert cleaned names match expected and suffixes removed. Ensure whitespace normalized."
+          },
+          {
+            "id": 3,
+            "title": "Implement ticker extraction with label matching, table/dl traversal, and name-adjacent fallback",
+            "description": "Find the stock ticker by scanning definition lists and tables for labels, with a robust regex fallback extracting a ticker in parentheses near the name. Normalize to uppercase.",
+            "dependencies": [
+              "5.1",
+              "5.2"
+            ],
+            "details": "Implementation steps inside scrape_stock:\n- Compile regexes:\n  - label_re = re.compile(r\"^(ticker|kortnamn|symbol)\\b\", re.IGNORECASE)\n  - ticker_re = re.compile(r\"\\b[A-Z0-9.-]{2,12}\\b\")\n- DL traversal:\n  - for each dt in soup.find_all('dt'):\n    - label = norm_text(dt.get_text())\n    - if label_re.match(label): dd = dt.find_next('dd'); val = visible_text(dd)\n    - If ticker_re.search(val): set ticker = match.group(0)\n- Table traversal:\n  - for each th in soup.find_all('th'):\n    - label = norm_text(th.get_text())\n    - if label_re.match(label): td = th.find_next('td'); val = visible_text(td)\n    - If ticker_re.search(val): set ticker\n- Fallback near name:\n  - Take the best available name source string: prefer og:title/h1 used above; if result['name'] is set, use the pre-cleaned raw candidate before suffix removal when available; otherwise, use the <title> text.\n  - Search for parentheses: m = re.search(r\"\\((?P<t>[A-Z0-9\\.-]{2,12})\\)\", candidate_string)\n  - If found, ticker = m.group('t')\n- Normalize ticker: ticker = ticker.upper().strip(\".,;:/[]()\")\n- Validate ticker length between 2 and 12; else discard.\n- Assign result['ticker'] = ticker or None. Log INFO if not found.",
+            "status": "pending",
+            "testStrategy": "Fixtures: (a) dl with 'Ticker' label, (b) table with 'Symbol', (c) name like 'Company AB (CO)' only fallback, (d) lowercase symbol in value. Assert extraction and normalization to uppercase, stripping surrounding punctuation. Ensure regex refuses too-short/long strings."
+          },
+          {
+            "id": 4,
+            "title": "Extract metrics from definition lists and tables with whitespace normalization",
+            "description": "Collect key-value financial metrics from both dl/dt/dd structures and table th/td rows. Keep exact keys (including Swedish), capture only visible text, normalize whitespace, and skip empty values.",
+            "dependencies": [
+              "5.1"
+            ],
+            "details": "Implementation steps inside scrape_stock:\n- Initialize metrics = {}\n- From definition lists:\n  - for each dl in soup.find_all('dl'):\n    - iterate dt elements; for each dt find its immediate dd via dt.find_next('dd') that appears before the next dt sibling\n    - key = norm_text(dt.get_text())\n    - val = visible_text(dd)\n    - If key and val are non-empty and val not in {\"-\", \"–\", \"—\"}, and key not already in metrics, set metrics[key] = val\n- From tables:\n  - for each table in soup.find_all('table'):\n    - for each tr in table.find_all('tr'):\n      - Determine header cell: th if present else first td; value cell: next td\n      - key = norm_text(header_cell.get_text())\n      - val = visible_text(value_cell)\n      - If key and val non-empty and key not already in metrics, metrics[key] = val\n- Additional filters:\n  - Exclude rows that are structural (e.g., if value cell contains nested table) or where key resembles a section title (no following td)\n  - Do not translate or transform keys; preserve exact Swedish labels for later translation\n- Assign result['metrics'] = metrics",
+            "status": "pending",
+            "testStrategy": "Fixtures covering: (a) dl-based details, (b) table-based details, (c) mixed, (d) duplicate keys across sources (first wins), (e) rows with placeholder dashes. Assert metrics length > 0 for typical pages and that empty/placeholder values are skipped. Verify whitespace normalization."
+          },
+          {
+            "id": 5,
+            "title": "Assemble return object, add logging, and finalize edge handling",
+            "description": "Wire together name, ticker, and metrics into the final dict. Add warnings for missing or empty fields, ensure only visible text is returned, and gracefully handle pages with missing content.",
+            "dependencies": [
+              "5.2",
+              "5.3",
+              "5.4"
+            ],
+            "details": "Implementation steps inside scrape_stock:\n- After extraction steps, construct and return:\n  - return {\"name\": result['name'], \"ticker\": result['ticker'], \"url\": url, \"metrics\": result['metrics']}\n- Logging:\n  - If result['name'] is None: logger.warning(\"Name not found for %s\", url)\n  - If result['ticker'] is None: logger.warning(\"Ticker not found for %s\", url)\n  - If not result['metrics']: logger.warning(\"No metrics found for %s (possible dynamic content)\", url)\n- Ensure all text surfaced uses norm_text/visible_text from prior steps (no raw HTML). Avoid any JavaScript execution.\n- Keep function resilient: do not raise on missing fields; return partial data where available.",
+            "status": "pending",
+            "testStrategy": "End-to-end tests using saved HTML fixtures combining name, ticker, and metrics. Assert the returned dict has expected keys and that missing sections do not cause exceptions. Validate that warnings are logged when appropriate and that the function returns only strings in the metrics values."
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "LLM Translator Service",
+        "description": "Implement LLM-based Swedish→English translator with structured prompts and batching.",
+        "details": "- Use OpenAI SDK (openai>=1.43). Model: gpt-4o-mini for cost-effective translation.\n- translator.py API:\n  - translate_text(text:str, src='sv', tgt='en') -> str\n  - translate_batch(texts:list[str], src='sv', tgt='en', max_batch=20) -> list[str]\n- Prompting:\n  system: \"You are a professional financial translator. Translate from {src} to {tgt}. Preserve ticker symbols, percentages, units, and key financial terminology. Return only the translated text.\"\n  user: text or JSON list of texts.\n- Implement minimal normalization: collapse whitespace, keep punctuation.\n- Read OPENAI_API_KEY from env; if missing and --dry-run, bypass returning original text; if missing and not dry-run, raise informative error.\n- Rate limiting: simple sleep between batches; catch RateLimitError and retry with backoff.\n- Avoid exceeding token limits by chunking long lists (<=20 items per batch).",
+        "testStrategy": "- Unit tests with OPENAI_API_KEY optionally mocked: patch client to return deterministic outputs.\n- Verify batch preserves order and length.\n- Test idempotence on English input (should return same or near-identical).\n- Ensure special tokens like ticker 'VOLV B' remain unchanged.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Initialize OpenAI client and configuration",
+            "description": "Create a reusable OpenAI client factory that reads OPENAI_API_KEY from environment and provides clear errors when absent.",
+            "dependencies": [],
+            "details": "In translator.py implement get_client(dry_run: bool = False) -> OpenAI | None that: (1) reads OPENAI_API_KEY from env; (2) if key missing and dry_run is True, return None; (3) if key missing and dry_run is False, raise a ValueError with a helpful message about setting OPENAI_API_KEY; (4) if key present, instantiate and cache OpenAI() client (openai>=1.43). Optionally read env vars for API base/timeouts. Provide module-level constants for model='gpt-4o-mini'.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement translate_text with structured prompt and normalization",
+            "description": "Implement translate_text(text, src, tgt) calling gpt-4o-mini with system/user messages and minimal normalization.",
+            "dependencies": [
+              "6.1"
+            ],
+            "details": "In translator.py implement translate_text(text: str, src: str = 'sv', tgt: str = 'en', preserve_case: bool = True, dry_run: bool = False) -> str. Build messages: system='You are a professional financial translator. Translate from {src} to {tgt}. Preserve ticker symbols, percentages, units, and key financial terminology. Return only the translated text.'; user=raw text. If dry_run is True and client is None, return original text. Otherwise call client.chat.completions.create(model='gpt-4o-mini', messages=[...]). Extract content, then apply minimal normalization: collapse consecutive whitespace to a single space and strip; do not alter punctuation; do not change case if preserve_case=True. Return the normalized translated string.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Implement translate_batch with chunking, ordering, and rate limiting",
+            "description": "Translate lists in deterministic batches with max_batch<=20, preserving order and applying a small sleep between batches.",
+            "dependencies": [
+              "6.1",
+              "6.2"
+            ],
+            "details": "Implement translate_batch(texts: list[str], src: str = 'sv', tgt: str = 'en', max_batch: int = 20, preserve_case: bool = True, dry_run: bool = False, inter_batch_delay: float = 0.5) -> list[str]. Validate inputs; split texts into chunks of size<=max_batch; for each chunk: if dry_run and no client, return inputs unchanged for that chunk. Otherwise send a single chat completion with user message as a compact JSON array of the chunk and explicit instruction to return a JSON array of translations in the same order, no extra commentary. Parse the response as JSON list; on parse failure, fall back to line-per-item split with strict length validation. Normalize each item as in translate_text. Reassemble in original order. Sleep inter_batch_delay seconds between successful batches. Guarantee output length equals input length and order preserved.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Add retry/backoff for rate limits and transient errors",
+            "description": "Wrap API calls with exponential backoff on RateLimitError and transient OpenAI errors; make delays configurable.",
+            "dependencies": [
+              "6.2",
+              "6.3"
+            ],
+            "details": "Introduce a helper call_with_retries(func, *, max_retries=5, base_delay=0.5, max_delay=8.0, jitter=True) used by both translate_text and translate_batch when invoking the API. Catch openai.RateLimitError, openai.APIError, openai.APIConnectionError, openai.Timeout, and 5xx conditions; back off exponentially with optional jitter; stop on non-retryable errors. Allow overrides via kwargs or env (TRANSLATOR_RETRY_MAX, TRANSLATOR_RETRY_BASE, TRANSLATOR_RETRY_MAX_DELAY). Ensure deterministic retry count and re-raise after exhaustion with helpful context.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Implement dry-run behavior and missing-key handling",
+            "description": "Provide predictable behavior when API key is absent or dry-run is enabled for both single and batch translations.",
+            "dependencies": [
+              "6.1",
+              "6.2",
+              "6.3"
+            ],
+            "details": "Add a consistent dry-run path: if dry_run=True, bypass network calls and return inputs unchanged for both translate_text and translate_batch. If dry_run=False and OPENAI_API_KEY is missing, raise a clear ValueError from get_client. Also support env DRY_RUN=1 to default dry_run=True unless explicitly overridden by function args. Document behavior in docstrings.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Prompt tuning and preservation rules with optional preserve_case",
+            "description": "Refine prompts and normalization to preserve tickers, percentages, units, and financial terms; add preserve_case flag.",
+            "dependencies": [
+              "6.2",
+              "6.3"
+            ],
+            "details": "Finalize system prompt as specified; for batch, add explicit: 'Return a JSON array of strings, same length and order as input. No extra text.' Implement helper build_messages(input, src, tgt, batch: bool) and parse_batch_response(content) with strict JSON parsing. Keep normalization minimal (collapse whitespace, strip). Add preserve_case bool (default True) to avoid case normalization. Do not alter sequences that match ticker-like patterns (e.g., regex for uppercase letters with optional space/dot/hyphen such as 'VOLV B'); rely on prompt plus non-destructive normalization.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Unit tests with mocked client",
+            "description": "Write tests ensuring order/length preservation, idempotence on English, and that special tokens remain unchanged.",
+            "dependencies": [
+              "6.1",
+              "6.2",
+              "6.3",
+              "6.4",
+              "6.5",
+              "6.6"
+            ],
+            "details": "Using pytest, create tests that: (1) mock client.chat.completions.create to return deterministic outputs; (2) verify translate_batch preserves order and length across multiple batches (>20 items) and sleeps between batches (patch time.sleep); (3) verify idempotence on English inputs; (4) ensure special tokens like 'VOLV B', percentages, and units are unchanged; (5) simulate RateLimitError and confirm retries/backoff occur and eventually succeed; (6) verify missing API key raises when dry_run=False and bypasses when dry_run=True; (7) test deterministic chunking and that outputs map correctly to inputs even with parsing fallback.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Translation Cache",
+        "description": "Add a lightweight, persistent cache to avoid repeated translations for identical inputs.",
+        "details": "- Implement a small SQLite cache in ./data/translation_cache.sqlite to avoid DB schema changes.\n- Table: CREATE TABLE IF NOT EXISTS cache (src TEXT, tgt TEXT, input TEXT, output TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(src,tgt,input));\n- In translator.py wrap translate_text/batch to first check cache, else call LLM then store results.\n- Normalize input key: strip, collapse spaces, lower for labels; do not lower-case company names; use two code paths: labels normalized, names exact via a flag.\n- Provide .clear_cache() utility for tests.\n- Optional in-memory LRU via functools.lru_cache(maxsize=4096) on top of persistent cache.",
+        "testStrategy": "- Insert known mapping and ensure translator returns cached value without calling network (mock underlying client to raise if called).\n- Benchmark: translate the same list twice and assert near-zero time on second run.\n- Verify primary key uniqueness prevents duplicates.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create SQLite cache database and table",
+            "description": "Initialize ./data/translation_cache.sqlite and create the cache table with the specified schema.",
+            "dependencies": [],
+            "details": "- Ensure ./data directory exists.\n- Create ./data/translation_cache.sqlite using sqlite3.\n- Execute DDL: CREATE TABLE IF NOT EXISTS cache (src TEXT, tgt TEXT, input TEXT, output TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(src,tgt,input));\n- Provide helper: get_cache_conn(db_path='./data/translation_cache.sqlite') -> sqlite3.Connection (row_factory=sqlite3.Row; foreign_keys ON).\n- Provide helper functions: cache_get(src,tgt,input_key) -> Optional[str]; cache_set(src,tgt,input_key,output) using INSERT ... ON CONFLICT(src,tgt,input) DO UPDATE SET output=excluded.output, created_at=CURRENT_TIMESTAMP;\n- Normalize src/tgt to lowercase for keying; parameterize all SQL; wrap writes in a transaction.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement input normalization strategy",
+            "description": "Add normalization utilities for label vs name paths, controlled by a flag.",
+            "dependencies": [],
+            "details": "- Implement normalize_input(text:str, mode: Literal['label','name']='label') -> str.\n- For mode='label': text.strip(); collapse all internal whitespace to single spaces (regex \\s+ -> ' '); Unicode NFKC; lower().\n- For mode='name': preserve original casing; still strip and collapse whitespace; no lowercasing.\n- Expose flag in translator APIs (e.g., mode or preserve_case boolean) to choose path.\n- Unit-safe: return '' for empty/whitespace-only input.\n- Document: default mode='label' unless explicitly set to 'name' for company names.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Wrap translate_text with persistent cache",
+            "description": "Before calling the LLM, check the SQLite cache; after success, store result.",
+            "dependencies": [
+              "7.1",
+              "7.2"
+            ],
+            "details": "- In translator.py, modify translate_text(text:str, src='sv', tgt='en', mode='label') -> str.\n- Compute key = normalize_input(text, mode); src/tgt = src.lower(), tgt.lower().\n- If key == '': return '' without DB access.\n- Lookup via cache_get(src,tgt,key); on hit, return output.\n- On miss, call underlying LLM translator (existing _llm_translate_text); on success, cache_set(src,tgt,key,output) and return output.\n- Do not cache failures/exceptions; only cache on successful non-None responses.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Wrap translate_batch with bulk cache",
+            "description": "Batch-optimized cache lookups and inserts; preserve order and mix cached with new translations.",
+            "dependencies": [
+              "7.1",
+              "7.2",
+              "7.3"
+            ],
+            "details": "- In translator.py, modify translate_batch(texts:list[str], src='sv', tgt='en', max_batch=20, mode='label') -> list[str].\n- Normalize each input to keys; build index mapping from original positions to normalized keys.\n- Bulk-select cached rows: SELECT src,tgt,input,output FROM cache WHERE src=? AND tgt=? AND input IN (...); chunk IN lists if needed.\n- Fill results array with cached outputs; collect misses (dedup by key while preserving first-seen order).\n- Call underlying _llm_translate_batch on misses (respect max_batch), map outputs back to all corresponding original indices.\n- Bulk-insert new results with executemany using ON CONFLICT UPSERT inside a transaction.\n- Preserve output order exactly matching input list.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Add optional in-memory LRU and clear_cache utility",
+            "description": "Layer an optional functools.lru_cache on top and implement clear_cache() for tests.",
+            "dependencies": [
+              "7.3",
+              "7.4"
+            ],
+            "details": "- Implement an internal function _translate_text_cached(src,tgt,text,mode) that performs the translate_text flow; decorate with functools.lru_cache(maxsize=4096).\n- Expose a config flag (e.g., use_memory_cache=True) to enable/disable calling the LRU-wrapped function; default enabled.\n- For batch, consult the LRU per-miss item to short-circuit DB/LLM calls when possible.\n- Implement clear_cache(db_path='./data/translation_cache.sqlite'): DELETE FROM cache; VACUUM; and call _translate_text_cached.cache_clear().\n- Ensure clear_cache is safe to call in tests and does not raise if DB file absent (create then clear).",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Tests: cache behavior, normalization, and performance",
+            "description": "Write unit tests to validate cache hits, normalization rules, PK uniqueness, and batch speed on second run.",
+            "dependencies": [
+              "7.1",
+              "7.2",
+              "7.3",
+              "7.4",
+              "7.5"
+            ],
+            "details": "- Use a temporary DB path to isolate tests; ensure cleanup; toggle use_memory_cache True/False.\n- Mock LLM: First call returns known outputs; assert second translate_text/translate_batch returns cached values without invoking LLM (assert no calls or raise if called).\n- Normalization: Verify labels path lowercases and collapses spaces; names path preserves case (\"Bolag AB\" vs \"bolag ab\" distinct for 'name').\n- PK uniqueness: Re-inserting same (src,tgt,input) updates output without duplicates (count remains 1).\n- Batch: Translate a list twice; second run should be significantly faster and/or make zero LLM calls; order preserved with mix of cached/new.\n- clear_cache(): After calling, both persistent and LRU caches are empty; subsequent calls hit LLM again.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Persistence Wiring for Stocks and Metrics",
+        "description": "Connect scraper and translator to DataStore: upsert stocks and insert metrics snapshots, supporting dry-run.",
+        "details": "- Implement function persist_stock_and_metrics(scraped:dict, datastore, translator, dry_run:bool)-> tuple(stock_id, inserted_metrics)\n- Flow:\n  - name_en = translate_text(scraped['name'], src='sv', tgt='en', preserve_case=True)\n  - keys_en = translate_batch(list(scraped['metrics'].keys()))\n  - Build dict of translated metrics mapping to original values.\n  - ticker stays as-is (uppercase); if contains Swedish letters, leave.\n  - If not dry-run: stock_id = upsert_stock(ticker, name_en, url); for each metric insert row.\n  - Return counts for summary.\n- Ensure transactional commit per stock. Catch IntegrityError and log; continue next stock.",
+        "testStrategy": "- Use temp DB and fake translator returning known outputs; assert upsert happens and metrics rows inserted with translated keys.\n- Dry-run mode: assert no DB writes (spy on methods) while logs show intended operations.\n- Handle empty metrics gracefully.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define function contract and structured logging",
+            "description": "Specify signature, expected inputs/outputs, and logging strategy for persist_stock_and_metrics.",
+            "dependencies": [],
+            "details": "- Function: persist_stock_and_metrics(scraped: dict, datastore, translator, dry_run: bool) -> tuple[Optional[int], int]\n- scraped contract: {'name': str, 'ticker': str, 'url': str, 'metrics': dict[str, str]} (metrics may be empty)\n- datastore contract (minimum): upsert_stock(ticker: str, name_en: str, url: str) -> int; insert_metric_snapshot(stock_id: int, key: str, value: str, source_url: str, observed_at: datetime) -> None; transaction helpers (context manager or begin/commit/rollback)\n- translator contract: translate_text(text: str, src='sv', tgt='en', preserve_case=True) -> str; translate_batch(texts: list[str], src='sv', tgt='en', max_batch=20) -> list[str]\n- Logging: DEBUG for step-by-step flow (inputs sizes, planned operations), INFO for summary per stock (ticker, stock_id, count, dry-run), WARNING for odd conditions (empty metrics, duplicate translated keys), ERROR for persistence failures (IntegrityError) with context\n- Return value: (stock_id or None in dry-run/failure, inserted_metrics_count)\n- Do not perform any I/O beyond datastore and translator; pure coordination function",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Translate company name and metric keys; build translated metrics mapping",
+            "description": "Use translator to convert Swedish name and metric keys to English and construct a mapping of translated keys to original values.",
+            "dependencies": [
+              "8.1"
+            ],
+            "details": "- name_en = translator.translate_text(scraped['name'], src='sv', tgt='en', preserve_case=True)\n- keys_en = translator.translate_batch(list(scraped.get('metrics', {}).keys()), src='sv', tgt='en') preserving order\n- Build translated_metrics: dict where translated key maps to original value: {k_en: scraped['metrics'][k_sv]}\n- Handle edge cases: if translation yields empty string or None, fall back to original key; on duplicate translated keys, keep first occurrence and log a WARNING with both source keys\n- Ensure metric values are carried as-is (do not transform numbers/percentages/units)\n- If metrics is empty or missing, return empty mapping and log at DEBUG",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Implement transactional DB flow with dry-run support",
+            "description": "Upsert stock and insert per-metric snapshots within a per-stock transaction; when dry-run, perform no writes but compute counts.",
+            "dependencies": [
+              "8.1",
+              "8.2"
+            ],
+            "details": "- Normalize inputs, then if dry_run: skip datastore writes; simulate flow and compute inserted_metrics_count = len(translated_metrics); stock_id = None\n- Non-dry-run: open transaction (context manager preferred). Steps: upsert_stock(ticker, name_en, url) -> stock_id; for each translated metric insert a snapshot row with key_en and original value; include source_url=scraped['url'] and observed_at=now if schema supports\n- Commit on success; ensure idempotent upsert (upsert_stock must not duplicate)\n- Return (stock_id, inserted_metrics_count)\n- Log INFO summary including dry_run flag, stock_id, and count",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Normalize ticker and handle empty metrics gracefully",
+            "description": "Uppercase ticker without altering Swedish letters and ensure function behaves correctly when metrics are empty or missing.",
+            "dependencies": [
+              "8.1"
+            ],
+            "details": "- Ticker normalization: ticker_norm = scraped['ticker'].strip().upper(); do not transliterate or strip diacritics (Å, Ä, Ö remain as-is); do not alter dots/hyphens\n- Validate presence of ticker and name; log WARNING if missing mandatory fields and decide whether to proceed or short-circuit\n- If metrics is empty/missing: perform upsert_stock (unless dry-run) but insert zero metrics; return count=0; log INFO/DEBUG accordingly",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Robust error handling and return semantics",
+            "description": "Catch IntegrityError during persistence, log, rollback, and return clear counts without crashing.",
+            "dependencies": [
+              "8.3",
+              "8.4"
+            ],
+            "details": "- Wrap transactional block in try/except for IntegrityError (from datastore/DB-API); on error: rollback transaction, log ERROR with ticker, name, and offending key/value if available\n- Continue semantics: since function handles a single stock, return (None, 0) on failure so caller can continue to next stock\n- Also catch and log ValueError/TypeError for malformed input; avoid swallowing unexpected exceptions unless necessary; re-raise only if truly unrecoverable configuration issues\n- Ensure return type consistency across success, dry-run, and failure paths",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Integration tests with temp DB and fake translator",
+            "description": "Write tests validating upsert idempotence, metric insert counts, translated keys persistence, dry-run behavior, and error handling.",
+            "dependencies": [
+              "8.3",
+              "8.4",
+              "8.5"
+            ],
+            "details": "- Use a temporary DB (e.g., SQLite in-memory) and a datastore shim exposing upsert_stock, insert_metric_snapshot, and transaction context; spy/monkeypatch to assert calls\n- Fake translator returning deterministic outputs: translate_text returns 'ACME AB'->'ACME AB'; translate_batch maps ['Omsättning','P/E'] -> ['Revenue','P/E']\n- Test cases: (1) normal flow inserts N metrics with translated keys; (2) idempotent upsert called once and does not duplicate rows on repeated calls; (3) dry-run performs zero writes but logs intended actions and returns (None, N); (4) empty metrics results in 0 inserts and still upserts stock; (5) duplicate translated keys logs WARNING and only one insert; (6) simulated IntegrityError triggers rollback, logs ERROR, and returns (None, 0)\n- Assert return tuple correctness and logging messages contain ticker and counts",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "DuckDuckGo News Tool",
+        "description": "Implement a smolagents Tool that fetches recent news via duckduckgo_search and normalizes results.",
+        "details": "- In research.py define:\n  from smolagents import Tool\n  from duckduckgo_search import DDGS\n  class DuckNewsTool(Tool):\n    name = 'ddg_news'\n    description = 'Fetch top recent news articles for a company.'\n    inputs = {'query': {'type': 'string', 'description': 'Search query e.g., \"VOLV B Volvo news\"'}}\n    output_type = 'list'\n    def forward(self, query:str):\n      with DDGS() as ddgs:\n        items = ddgs.news(keywords=query, region='se-en', safesearch='moderate', timelimit='w', max_results=3)\n      out = []\n      for it in items:\n        out.append({'headline': it.get('title') or it.get('title_raw'), 'url': it.get('url'), 'source': it.get('source'), 'published_at': it.get('date')})\n      return out\n- No API key required. Handle exceptions and return [].",
+        "testStrategy": "- Mock DDGS().news to return canned data; ensure mapping to expected output keys.\n- Test timelimit variations and that max_results=3 is enforced.\n- Validate tool returns list of dicts serializable to JSON.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement DuckNewsTool with DDGS parameters",
+            "description": "Create the smolagents Tool for fetching recent news via duckduckgo_search with the specified parameters.",
+            "dependencies": [],
+            "details": "In research.py, define class DuckNewsTool(Tool) with: name='ddg_news', description='Fetch top recent news articles for a company.', inputs={'query': {'type': 'string', 'description': 'Search query e.g., \"VOLV B Volvo news\"'}}, output_type='list'. Implement forward(self, query: str): use `with DDGS() as ddgs:` and call `ddgs.news(keywords=query, region='se-en', safesearch='moderate', timelimit='w', max_results=3)`. Temporarily prepare to return an iterable of items from DDGS; normalization will be added in the next subtask.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Normalize DDG news results",
+            "description": "Map raw DDGS items to a JSON-serializable list of dicts: {headline, url, source, published_at}.",
+            "dependencies": [
+              "9.1"
+            ],
+            "details": "In DuckNewsTool.forward, iterate over returned items and build a list of dicts with keys: headline = it.get('title') or it.get('title_raw') or None; url = it.get('url') or None; source = it.get('source') or None; published_at = it.get('date') or None. Ensure values are JSON-serializable (convert non-str to str if necessary). Slice to at most 3 items to be safe even if upstream ignores max_results. Return the normalized list.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Add robust exception handling and input validation",
+            "description": "Ensure the tool returns [] on any error; no API key required.",
+            "dependencies": [
+              "9.1",
+              "9.2"
+            ],
+            "details": "Wrap DDGS usage and normalization in try/except Exception; on any exception, return []. Validate input: if query is None or not a non-empty string after strip, return []. Use the DDGS context manager to ensure resources are cleaned. Do not require or reference any API keys.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Write deterministic tests with DDGS mocking",
+            "description": "Test mapping correctness, parameter usage, result limits, serialization, and error path.",
+            "dependencies": [
+              "9.1",
+              "9.2",
+              "9.3"
+            ],
+            "details": "Using pytest and monkeypatch/unittest.mock: (1) Mock DDGS to return canned items; assert output list has keys {headline, url, source, published_at} with correct values. (2) Verify ddgs.news called with keywords=query, region='se-en', safesearch='moderate', timelimit='w', max_results=3. (3) Ensure the returned list length is <= 3 even if the mock yields more. (4) Validate JSON-serializability: json.dumps(output) succeeds. (5) Simulate DDGS raising an exception and empty/invalid query; assert the tool returns []. Keep tests deterministic by avoiding network calls and fixed canned data.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "smolagents ResearchAgent Integration",
+        "description": "Wire a minimal ToolCalling agent that invokes DuckNewsTool and persists translated headlines.",
+        "details": "- In research.py implement:\n  - build_research_agent() -> ToolCallingAgent using OpenAI LLM (same OPENAI_API_KEY). Model: gpt-4o-mini.\n  - Function research_and_persist(stock_id:int, ticker:str, name:str, datastore, translator, dry_run:bool) -> int news_count\n- Agent prompt: \"Use the ddg_news tool to fetch the 3 most recent relevant news about the company. Return the tool results as-is; do not fabricate.\"\n- Call: agent.run(task=f\"Get 3 recent news for {ticker} {name}\")\n- Result may be Python objects or JSON depending on agent; if string, json.loads; otherwise expect list.\n- For each item, translate headline sv->en via translator (cache helps). Insert into stock_news with url, source, published_at.\n- If --skip-research, bypass entirely.",
+        "testStrategy": "- Mock agent to return deterministic results; verify translation called and insert_news invoked expected times.\n- Test handling of malformed agent output (string not JSON): ensure fallback/refusal results in no crash and 0 inserts.\n- Dry-run: assert nothing persisted.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Build ToolCallingAgent with DuckNewsTool (gpt-4o-mini)",
+            "description": "Implement build_research_agent() in research.py using smolagents ToolCallingAgent with OpenAI gpt-4o-mini and register the DuckNewsTool as 'ddg_news'.",
+            "dependencies": [],
+            "details": "- Create OpenAI client using OPENAI_API_KEY from env.\n- Instantiate ToolCallingAgent(model='gpt-4o-mini', tools=[DuckNewsTool registered as name 'ddg_news']).\n- System prompt: \"Use the ddg_news tool to fetch the 3 most recent relevant news about the company. Return the tool results as-is; do not fabricate.\"\n- Ensure tool signature aligns with DuckNewsTool; agent must not fabricate and should call the tool exactly once when possible.\n- Return the configured agent from build_research_agent().",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Implement research_and_persist orchestration",
+            "description": "Add research_and_persist(stock_id, ticker, name, datastore, translator, dry_run) in research.py to orchestrate agent build, run, parse, translate, and persist workflow.",
+            "dependencies": [
+              "10.1"
+            ],
+            "details": "- Signature: research_and_persist(stock_id:int, ticker:str, name:str, datastore, translator, dry_run:bool) -> int.\n- Build agent via build_research_agent().\n- Prepare task string: f\"Get 3 recent news for {ticker} {name}\".\n- Orchestrate: run agent, parse outputs, translate headlines, then persist items (respecting dry_run).\n- Return the count of successfully persisted items.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Invoke agent and robustly parse heterogeneous outputs",
+            "description": "Call agent.run(...) and safely normalize outputs into a list of news items regardless of Python objects vs JSON string.",
+            "dependencies": [
+              "10.1",
+              "10.2"
+            ],
+            "details": "- Call: agent.run(task=f\"Get 3 recent news for {ticker} {name}\").\n- If result is a string: attempt json.loads; if that yields dict with key like 'data' or 'results', extract list; if it yields a list, use it; on failure, log warning and treat as empty list.\n- If result is a dict: try common keys ('data', 'results', 'items'); else wrap single dict into list.\n- If result is already a list: use as-is.\n- Ensure each element is a dict; if element is a string, attempt json.loads on each; otherwise skip malformed items with per-item logging.\n- Do not raise; on total failure return 0 items to caller.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Translate headlines and normalize fields",
+            "description": "Translate Swedish headlines to English using translator and normalize each item to a canonical schema.",
+            "dependencies": [
+              "10.3"
+            ],
+            "details": "- For each parsed item, map possible keys: title/headline -> headline; url/link -> url; source/publisher -> source; date/published/published_at -> published_at.\n- Use translator.translate_text(headline, src='sv', tgt='en') to get headline_en (translator may cache internally).\n- Normalize published_at to ISO 8601 string; try parsing to datetime with timezone preservation if present; on failure, keep original string.\n- Produce normalized dicts: { 'headline': headline_en, 'url': url, 'source': source, 'published_at': iso_str }.\n- Skip items missing required url or headline after normalization, with warning log.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Persist news items with dry-run and per-item error handling",
+            "description": "Insert normalized items into stock_news via datastore, honoring dry_run and continuing on errors.",
+            "dependencies": [
+              "10.4"
+            ],
+            "details": "- For each normalized item, if dry_run: log intended insert and count as not persisted (do not write); else call datastore.insert_news(stock_id, headline, url, source, published_at).\n- Catch exceptions per item; log and continue without aborting.\n- Optionally dedupe by URL within this batch to avoid duplicate inserts.\n- Return the count of successful inserts (0 in dry-run).",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Implement --skip-research gate",
+            "description": "Wire a skip path that bypasses research entirely when --skip-research is set.",
+            "dependencies": [
+              "10.2"
+            ],
+            "details": "- In the CLI or calling layer, add --skip-research flag.\n- When set, do not call research_and_persist; instead log \"Research skipped\" and treat news_count as 0.\n- Ensure this path avoids any agent or translator invocation.\n- Keep research_and_persist focused on orchestration; gating remains at the integration point.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Tests for agent parsing, translation, persistence, and skip/dry-run",
+            "description": "Add unit tests with mocked agent, translator, and datastore to validate robustness and counts.",
+            "dependencies": [
+              "10.1",
+              "10.2",
+              "10.3",
+              "10.4",
+              "10.5",
+              "10.6"
+            ],
+            "details": "- Mock agent.run to return: (a) valid list of dicts; (b) JSON string; (c) malformed string -> ensure no crash and 0 inserts.\n- Assert translator.translate_text called for each valid item; verify translated headlines are used.\n- Spy datastore.insert_news calls and validate count matches successful items; dry_run path: zero calls.\n- Test skip gate: with --skip-research, assert research_and_persist is not called and news_count reported as 0.\n- Cover per-item error handling: make one insert raise; ensure others still persist.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "title": "Orchestrator CLI and Pipeline Execution",
+        "description": "Implement argparse-based CLI that runs harvest → scrape → translate/persist → research with flags.",
+        "details": "- In cli.py implement using argparse:\n  Usage: uv run main.py run [--limit N] [--skip-research] [--dry-run]\n- Steps in run:\n  - Build session = build_session()\n  - links = harvest_links(session)\n  - If --limit: links = links[:N]\n  - For each link:\n    scraped = scrape_stock(link, session)\n    stock_id, metric_count = persist_stock_and_metrics(...)\n    If not --skip-research: news_count = research_and_persist(...)\n  - Use tqdm to show progress; collect totals; print summary at end.\n- Logging at INFO; DEBUG for verbose internals (optional via env LOG_LEVEL).\n- Ensure exceptions per stock don’t stop the whole run; continue with next and summarize errors.",
+        "testStrategy": "- Run locally with --limit 2 and --dry-run; verify flow and summary counts.\n- Simulate network errors (mock get_html) and ensure CLI continues and logs errors.\n- Verify flags behavior: limit respected; skip-research prevents agent invocation; dry-run prevents DB writes.",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Argparse CLI scaffolding for run command",
+            "description": "Create CLI entrypoint with argparse supporting 'run' subcommand and flags.",
+            "dependencies": [],
+            "details": "Implement in cli.py/main.py:\n- Command: uv run main.py run [--limit N] [--skip-research] [--dry-run]\n- Arguments:\n  --limit: int, optional; cap number of links processed.\n  --skip-research: store_true; gate research phase.\n  --dry-run: store_true; perform scraping/harvesting only; no DB writes or research calls.\n- Provide helpful --help text and usage string.\n- main() should parse args and dispatch to a run_orchestrator(args) function.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Initialize logging and HTTP session",
+            "description": "Configure logging from env and build a resilient HTTP session.",
+            "dependencies": [
+              "11.1"
+            ],
+            "details": "- Read LOG_LEVEL from environment; default INFO; valid values: DEBUG, INFO, WARNING, ERROR.\n- Configure logging.basicConfig(level=resolved_level, format with time, level, message).\n- Build requests session via http.build_session(); pass to orchestrator pipeline.\n- Log startup configuration (flags, level) at INFO; avoid leaking secrets.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Harvest links and apply limit",
+            "description": "Call link harvester to retrieve stock links and enforce optional cap.",
+            "dependencies": [
+              "11.1",
+              "11.2"
+            ],
+            "details": "- links = link_harvester.harvest_links(session)\n- If --limit is provided: links = links[:limit]. Validate limit >= 0; if 0, exit early with summary showing 0 processed.\n- Log harvested count and effective count after limit at INFO; log a few sample links at DEBUG.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Per-link pipeline with error isolation",
+            "description": "For each link: scrape, persist metrics, optionally research; guard with try/except.",
+            "dependencies": [
+              "11.3"
+            ],
+            "details": "- For each link in links:\n  try:\n    - scraped = scrape_stock(link, session)\n    - if not args.dry_run: stock_id, metric_count = persist_stock_and_metrics(scraped)\n      else: set stock_id=None, metric_count=0\n    - if not args.skip_research and not args.dry_run and stock_id is not None:\n        news_count = research_and_persist(stock_id, scraped)\n      else: news_count = 0\n    - Update counters accordingly; mark success if scrape succeeded (and persist if not dry-run).\n  except Exception as e:\n    - Log at ERROR with link and exception; append to an errors list; continue to next link.\n- Ensure broad exception handling per stock does not abort the run.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Progress bar and metrics aggregation",
+            "description": "Integrate tqdm and track totals across the run.",
+            "dependencies": [
+              "11.4"
+            ],
+            "details": "- Wrap iteration over links with tqdm: tqdm(links, desc='Processing stocks', unit='stock', dynamic_ncols=True, disable=not sys.stderr.isatty()).\n- Maintain counters: processed, success_stocks, metric_rows, news_rows, error_count, skipped_research_count, dry_run=True/False.\n- Update tqdm postfix with current counts; keep errors collected separately with their URLs and messages.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Final summary and resilient completion",
+            "description": "Print end-of-run summary and ensure non-fatal failures don’t stop pipeline.",
+            "dependencies": [
+              "11.5"
+            ],
+            "details": "- After loop, log INFO summary: processed, successes, metric_rows, news_rows, errors, skipped_research, dry_run flag, duration.\n- If errors > 0, log a compact list of failed URLs and reasons at WARNING/ERROR.\n- Exit with code 0 regardless of per-stock failures (unless unrecoverable setup error occurred before processing).",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "CLI orchestration tests with mocks",
+            "description": "Add pytest suite covering flags, error resilience, and dry-run.",
+            "dependencies": [
+              "11.1",
+              "11.2",
+              "11.3",
+              "11.4",
+              "11.5",
+              "11.6"
+            ],
+            "details": "- Mock components: harvest_links, scrape_stock, persist_stock_and_metrics, research_and_persist, and http.get_html to inject errors.\n- Tests:\n  1) Limit respected: harvest returns N>2, run with --limit 2, assert exactly 2 processed.\n  2) Skip research: --skip-research prevents research_and_persist from being called; counter reflects skipped.\n  3) Network/error handling: make one scrape raise; CLI continues to next; error count increments.\n  4) Dry-run: --dry-run skips persist and research; verify no DB calls; summary shows zero metric/news rows.\n  5) End-to-end smoke: --limit 2 --dry-run completes with exit code 0 and accurate summary logs.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "title": "Packaging, Documentation, and Minimal Tests",
+        "description": "Add minimal docs, lockfile, and smoke tests to ensure reproducibility and correctness.",
+        "details": "- Add README with setup, env vars (OPENAI_API_KEY), and usage examples.\n- Create uv lockfile via `uv lock`. Add scripts in README for common tasks.\n- Add tests with pytest (optional addition via uv add pytest>=8.3,<9) focusing on offline fixtures for harvester and scraper.\n- Include sample HTML fixtures under tests/fixtures/ for deterministic parsing.\n- Add .env.example with OPENAI_API_KEY placeholder.\n- Ensure CLI help text is accurate and examples: `uv run main.py run --limit 5 --skip-research`.\n- Add .gitignore for __pycache__, .venv, data/*.sqlite, *.log.",
+        "testStrategy": "- Run pytest on CI or locally to execute offline tests.\n- Manual smoke test: `uv run main.py run --limit 1 --dry-run` exits 0 and prints summary.\n- Verify README steps from clean checkout lead to successful dry-run without network for translation (due to dry-run bypass).",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Draft README with setup, env, and usage",
+            "description": "Create an initial README covering project overview, setup with uv, environment variables (OPENAI_API_KEY), and basic usage including dry-run notes.",
+            "dependencies": [],
+            "details": "- Outline prerequisites: Python 3.11+ and uv installed.\n- Setup steps: clone repo, create virtual env if desired, note that dependencies are installed via `uv sync` (lockfile added in a later subtask).\n- Document environment variables: OPENAI_API_KEY required for LLM features; how to set via `.env` or shell.\n- Add basic usage examples: `uv run main.py run --limit 1 --dry-run` and explain that `--dry-run` avoids DB writes and bypasses network-heavy operations where applicable.\n- Add project structure overview and where data and tests live.\n- Add a short troubleshooting section (e.g., ensure Python version, uv installed).",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Create uv lockfile and document common commands",
+            "description": "Generate the uv lockfile for reproducible installs and extend README with common uv workflows.",
+            "dependencies": [
+              "12.1"
+            ],
+            "details": "- Run `uv lock` to create a pinned lockfile and commit it.\n- Update README with common commands: `uv sync` (install deps from lock), `uv run <cmd>`, `uv add <pkg>`, `uv tree`, `uv export --format=requirements-txt` (optional).\n- Note how to add dev dependencies (e.g., pytest) and re-lock.\n- Include guidance for offline/CI installs using the lockfile (`uv sync --frozen`).",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Add pytest and minimal offline tests with fixtures",
+            "description": "Introduce pytest and create minimal offline tests for harvester and scraper using deterministic HTML fixtures.",
+            "dependencies": [
+              "12.2"
+            ],
+            "details": "- Add dependency: `uv add pytest>=8.3,<9` and re-run `uv lock` if needed.\n- Create `tests/fixtures/` with sample HTML pages emulating harvester and scraper inputs.\n- Write tests `tests/test_harvester_offline.py` and `tests/test_scraper_offline.py` that monkeypatch network calls (e.g., session/get_html) to load fixture HTML from disk.\n- Ensure tests run without network and validate parsed outputs and error handling paths.\n- Add `pytest.ini` or `pyproject.toml` pytest config (test paths, markers) if helpful.\n- Verify `uv run pytest -q` passes locally, fully offline.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Add .env.example and .gitignore",
+            "description": "Provide environment template and ignore common local artifacts, build outputs, and data files.",
+            "dependencies": [],
+            "details": "- Create `.env.example` with placeholder: `OPENAI_API_KEY=` and a short comment on how it's used.\n- Update `.gitignore` to include: `__pycache__/`, `.venv/`, `.env`, `data/*.sqlite`, `*.log`, `logs/`, `build/`, `dist/`, `*.egg-info/`, `.DS_Store`.\n- Mention in README to copy `.env.example` to `.env` and fill the key for non-dry-run operations.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Verify CLI help and update examples",
+            "description": "Ensure CLI help text is accurate and update README usage examples accordingly.",
+            "dependencies": [
+              "12.1"
+            ],
+            "details": "- Run `uv run main.py run --help` and confirm flags: `--limit`, `--skip-research`, `--dry-run` and general usage.\n- Update README with accurate examples, including: `uv run main.py run --limit 5 --skip-research` and `uv run main.py run --limit 1 --dry-run`.\n- Add a brief explanation of each flag and expected output/exit codes for smoke runs.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Smoke test instructions and CI stub",
+            "description": "Add local smoke test steps and an optional CI workflow to run pytest and a dry-run command.",
+            "dependencies": [
+              "12.2",
+              "12.3",
+              "12.5"
+            ],
+            "details": "- In README, add a smoke test section: 1) `cp .env.example .env` and set key if needed, 2) `uv sync --frozen`, 3) `uv run pytest -q`, 4) `uv run main.py run --limit 1 --dry-run` should exit 0 and print a summary.\n- Provide a minimal CI config (e.g., `.github/workflows/ci.yml`) that: checks out code, sets up Python 3.11, installs uv, runs `uv sync --frozen`, executes `uv run pytest -q`, and `uv run main.py run --limit 1 --dry-run`.\n- Ensure CI does not require network for tests and dry-run, and that it succeeds from a clean checkout.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "created": "2025-08-19T18:48:15.722Z",
+      "updated": "2025-08-19T18:49:10.887Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

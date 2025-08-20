@@ -1,0 +1,109 @@
+{
+	"meta": {
+		"generatedAt": "2025-08-19T21:19:38.846Z",
+		"tasksAnalyzed": 12,
+		"totalTasks": 12,
+		"analysisCount": 12,
+		"thresholdScore": 5,
+		"projectName": "Taskmaster",
+		"usedResearch": false
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 1,
+			"taskTitle": "Project Scaffolding and Environment Setup",
+			"complexityScore": 4,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Set up a uv-managed Python 3.11+ project named avanza-cli. Create the specified src/ package layout and main.py. Configure logging (INFO level) and ensure ./data is created at startup. Implement a minimal argparse CLI with a run subcommand callable via `uv run main.py run`. Add the listed core dependencies with uv and verify via `uv run main.py run --help`. Commit .gitignore and initial files.",
+			"reasoning": "Standard scaffolding with uv, logging, and argparse; clear boundaries and low algorithmic risk."
+		},
+		{
+			"taskId": 2,
+			"taskTitle": "SQLite DataStore and Schema",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Implement datastore.py with get_conn applying WAL, foreign_keys, busy_timeout, and Row row_factory. Add a write_txn context manager. Create schema.py with exact PRD DDL and ensure_schema/init_db helpers. Implement upsert_stock with RETURNING and robust fallback. Add insert_metric and insert_news helpers with RETURNING fallbacks and summary counters. Provide unit tests validating PRAGMAs, constraints, upsert idempotence, and inserts.",
+			"reasoning": "Involves connection tuning, DDL, upsert semantics with RETURNING fallback, and transactional correctness."
+		},
+		{
+			"taskId": 3,
+			"taskTitle": "HTTP Client Utilities",
+			"complexityScore": 6,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Create http.py with build_session() that sets modern browser headers. Add a polite randomized delay helper. Implement get_html() using tenacity to retry on {429,500,502,503,504} with exponential backoff and jitter, honoring default timeouts. Optionally add robots.txt awareness and logging. Write unit tests with mocks to verify headers, retries, delays, timeouts, and robots gating.",
+			"reasoning": "Combines requests usage, retry/backoff policy, timing behavior, and optional robots handling with thorough tests."
+		},
+		{
+			"taskId": 4,
+			"taskTitle": "LinkHarvester Implementation",
+			"complexityScore": 4,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Implement link_harvester.harvest_links(session) to fetch the seed URL via get_html, parse with BeautifulSoup(lxml), select anchors matching '/aktier/om-aktien/' patterns, normalize to absolute https://www.avanza.se URLs, strip fragments, and dedupe while preserving order. Add INFO logs and offline fixture-based tests.",
+			"reasoning": "Single-page parsing with URL normalization and dedupe; moderate parsing complexity, minimal network logic."
+		},
+		{
+			"taskId": 5,
+			"taskTitle": "StockScraper Implementation",
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Implement scrape_stock(url, session) with a polite delay and session.get. Parse name using prioritized selectors (og:title, h1, data-qa, title) and clean suffixes. Extract ticker via dl/table label matching with regex fallback near name. Collect metrics from dl and tables, normalizing whitespace and skipping placeholders. Return dict {name, ticker, url, metrics} and warn on missing sections. Build fixture-driven tests for variants.",
+			"reasoning": "Requires resilient parsing across DOM variants and careful normalization without JS execution."
+		},
+		{
+			"taskId": 6,
+			"taskTitle": "LLM Translator Service",
+			"complexityScore": 8,
+			"recommendedSubtasks": 7,
+			"expansionPrompt": "Create translator.py with an OpenAI client factory (env-based). Implement translate_text with a financial translation system prompt and minimal normalization; add translate_batch with chunking (<=20), JSON-array I/O, and order preservation. Add retry/backoff for rate limits and transient errors, and deterministic dry-run behavior when key is absent. Tune prompts to preserve tickers/units and support preserve_case. Provide comprehensive mocked tests.",
+			"reasoning": "Touches external API, batching, prompt design, retry/backoff, and robust parsing of JSON outputs."
+		},
+		{
+			"taskId": 7,
+			"taskTitle": "Translation Cache",
+			"complexityScore": 7,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Implement a SQLite cache at ./data/translation_cache.sqlite with PK(src,tgt,input). Add helpers get_cache_conn, cache_get, cache_set. Provide input normalization for label vs name modes. Wrap translate_text/batch to hit persistent cache first and store on success; add optional LRU on top and clear_cache() utility. Write unit tests for cache hits, normalization, PK upserts, batch behavior, and performance on second run.",
+			"reasoning": "Designing a two-tier cache with normalization and batch-aware lookups adds concurrency and correctness considerations."
+		},
+		{
+			"taskId": 8,
+			"taskTitle": "Persistence Wiring for Stocks and Metrics",
+			"complexityScore": 6,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Implement persist_stock_and_metrics(scraped, datastore, translator, dry_run) to translate the company name and metric keys, build a translated mapping with duplicate-key handling, normalize ticker, and perform per-stock transaction: upsert stock then insert metrics (or simulate in dry-run). Handle IntegrityError with rollback and return (stock_id or None, inserted_count). Add integration tests with a temp DB and fake translator.",
+			"reasoning": "Glue code across modules with transactional semantics and error handling; moderate complexity with edge cases."
+		},
+		{
+			"taskId": 9,
+			"taskTitle": "DuckDuckGo News Tool",
+			"complexityScore": 4,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "In research.py, implement DuckNewsTool(Tool) using duckduckgo_search.DDGS.news with region 'se-en', safesearch 'moderate', timelimit 'w', max_results=3. Normalize items to {headline,url,source,published_at}, enforce length limit, and return [].on errors or invalid input. Write deterministic tests by mocking DDGS to validate mapping, parameters, limits, and error path.",
+			"reasoning": "Straightforward tool wrapper with normalization and simple error handling; limited control flow complexity."
+		},
+		{
+			"taskId": 10,
+			"taskTitle": "smolagents ResearchAgent Integration",
+			"complexityScore": 7,
+			"recommendedSubtasks": 7,
+			"expansionPrompt": "Build a ToolCallingAgent with OpenAI gpt-4o-mini and DuckNewsTool registered. Implement research_and_persist(stock_id, ticker, name, datastore, translator, dry_run) to run the agent, robustly parse outputs (list/dict/JSON string), translate headlines, normalize fields, and persist via datastore (dedupe by URL) or skip on dry-run. Add a CLI-level --skip-research gate. Provide tests with mocked agent, translator, and datastore.",
+			"reasoning": "Agent orchestration plus heterogeneous output parsing and persistence introduces nontrivial integration logic."
+		},
+		{
+			"taskId": 11,
+			"taskTitle": "Orchestrator CLI and Pipeline Execution",
+			"complexityScore": 6,
+			"recommendedSubtasks": 7,
+			"expansionPrompt": "Extend cli.py to add run command with flags --limit, --skip-research, --dry-run. Initialize logging from LOG_LEVEL and build HTTP session. Harvest links, apply limit, and iterate with tqdm over links: scrape, persist stock/metrics, optionally research, with per-link try/except to isolate errors. Track and log totals and a final summary; exit 0 unless startup fails. Add tests using mocks to validate flags, limits, error resilience, and dry-run.",
+			"reasoning": "Multi-step orchestration with progress UI, robust error handling, and summarization; relies on several internal modules."
+		},
+		{
+			"taskId": 12,
+			"taskTitle": "Packaging, Documentation, and Minimal Tests",
+			"complexityScore": 4,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "Author README with setup via uv, env vars, and usage examples. Generate uv lockfile and document common commands. Add pytest and offline fixture-based tests for harvester and scraper. Provide .env.example and .gitignore. Verify CLI help and update examples. Add smoke test instructions and an optional CI workflow running pytest and a dry-run command.",
+			"reasoning": "Process-focused work across docs, locking, and basic tests; limited technical risk but multiple deliverables."
+		}
+	]
+}
