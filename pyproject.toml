@@ -27,21 +27,16 @@ indent-style = "space"
 
 
 [project]
-name = "ml-ai-project-template"
-version = "0.1.0"
-description = "A Python template for machine learning and AI projects"
-authors = [{ name = "Yann POURCENOUX", email = "yann.pourcenoux@gmail.com" }]
+name = "avanza-cli"
+version = "0.0.0"
+description = "CLI for Avanza scraping and research"
 readme = "README.md"
-license = { file = "LICENSE" }
-urls = { Homepage = "https://github.com/yourusername/your-repo" }
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
-    "loguru",
-    "pytest",
-    "pytest-cov",
-    "pytest-xdist",
-    "ruff",
-    "isort",
-    "mypy",
-    "pre-commit",
+    "beautifulsoup4>=4.12.3,<5",
+    "duckduckgo-search>=6.3.0,<7",
+    "lxml>=5.3.0,<6",
+    "openai>=1.43.0,<2",
+    "smolagents>=1.21.2",
+    "tenacity>=8.5.0,<9",
 ]

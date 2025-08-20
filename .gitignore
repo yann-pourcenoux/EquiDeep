@@ -228,4 +228,11 @@ node_modules/
 
 # Task files
 # tasks.json
-# tasks/ 
+# tasks/
+
+# uv specific
+.uv/
+
+# Project data directory
+data/*
+!data/.gitkeep 
