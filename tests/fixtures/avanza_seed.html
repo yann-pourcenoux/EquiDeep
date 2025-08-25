@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Avanza - Stock Search</title>
+</head>
+
+<body>
+    <div class="stock-list">
+        <!-- Valid stock links - should be harvested -->
+        <a href="/aktier/om-aktien/abb-ltd">ABB Ltd</a>
+        <a href="https://www.avanza.se/aktier/om-aktien/ericsson-b">Ericsson B</a>
+        <a href="/aktier/om-aktien/volvo-b?some=query">Volvo B</a>
+        <a href="https://www.avanza.se/aktier/om-aktien/atlas-copco-a#section">Atlas Copco A</a>
+
+        <!-- Duplicate - should be deduped -->
+        <a href="/aktier/om-aktien/abb-ltd">ABB Ltd (duplicate)</a>
+        <a href="https://www.avanza.se/aktier/om-aktien/ericsson-b">Ericsson B (duplicate)</a>
+
+        <!-- Invalid links - should be filtered out -->
+        <a href="/some/other/page">Other page</a>
+        <a href="http://www.avanza.se/aktier/om-aktien/insecure">HTTP not HTTPS</a>
+        <a href="https://m.avanza.se/aktier/om-aktien/mobile">Wrong subdomain</a>
+        <a href="https://other-site.com/aktier/om-aktien/external">External site</a>
+        <a href="">Empty href</a>
+        <a>No href attribute</a>
+
+        <!-- Edge cases -->
+        <a href="  /aktier/om-aktien/whitespace  ">Whitespace around href</a>
+        <a href="/aktier/om-aktien/">Path but no stock name</a>
+    </div>
+</body>
+
+</html>
