@@ -40,3 +40,8 @@ dependencies = [
     "smolagents>=1.21.2",
     "tenacity>=8.5.0,<9",
 ]
+
+[dependency-groups]
+test = [
+    "pytest>=8.4.1",
+]
